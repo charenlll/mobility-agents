@@ -18,8 +18,13 @@ function renderStationLayer(stationType, stations) {
 
   const stationList = Array.isArray(stations) ? stations : [];
 
-  const imageWidth = mapImage.clientWidth;
-  const imageHeight = mapImage.clientHeight;
+  const imageWidth = mapImage.clientWidth || mapImage.naturalWidth;
+  const imageHeight = mapImage.clientHeight || mapImage.naturalHeight;
+
+  if (!imageWidth || !imageHeight) {
+    console.error("地图尺寸无效，无法渲染站点");
+    return;
+  }
 
   let renderedCount = 0;
 
@@ -30,70 +35,42 @@ function renderStationLayer(stationType, stations) {
       station.latitude === null ||
       station.latitude === undefined
     ) {
-      console.warn(`站点 ${station.station_name || station.station_id} 缺少经纬度，跳过渲染`, station);
       return;
     }
 
-    const { x, y } = geoToPixel(
-      station.longitude,
-      station.latitude,
-      geoReference
+    const pixel = geoToPixel(
+      Number(station.longitude),
+      Number(station.latitude),
+      geoReference,
+      imageWidth,
+      imageHeight
     );
 
-    // 超出图片可视范围的点先不渲染
-    if (x < 0 || x > imageWidth || y < 0 || y > imageHeight) {
-      console.warn(`站点 ${station.station_name} 超出图片范围，不显示`, {
-        station,
-        pixel: { x, y },
-        imageWidth,
-        imageHeight
-      });
+    if (!pixel) {
       return;
     }
 
-    const stationElement = document.createElement("button");
-    const imgElement = document.createElement("img");
-    
-    if (stationType === "metro") {
-      imgElement.src = "../assets/icons/metro_icon.png";
-      imgElement.alt = "地铁站";
-    } else {
-      imgElement.src = "../assets/icons/bus_map.png";
-      imgElement.alt = "公交站";
-    }
-    
-    imgElement.style.width = "30px";
-    imgElement.style.height = "30px";
-    imgElement.style.display = "block";
-    imgElement.style.objectFit = "contain";
-    imgElement.style.imageRendering = "crisp-edges";
-    imgElement.style.imageRendering = "-webkit-optimize-contrast";
-    stationElement.appendChild(imgElement);
-    
-    stationElement.title = station.station_name || station.station_id || "未知站点";
+    const point = document.createElement("button");
+    point.className = "station-point";
+    point.style.left = `${pixel.x}px`;
+    point.style.top = `${pixel.y}px`;
+    point.title = station.station_name || station.name || "未命名站点";
 
-    stationElement.style.position = "absolute";
-    stationElement.style.left = `${x}px`;
-    stationElement.style.top = `${y}px`;
-    stationElement.style.transform = "translate(-50%, -50%)";
-    stationElement.style.border = "none";
-    stationElement.style.background = "transparent";
-    stationElement.style.padding = "0";
-    stationElement.style.cursor = "pointer";
-    stationElement.style.zIndex = "10";
-    stationElement.style.width = "40px";
-    stationElement.style.height = "40px";
+    point.addEventListener("click", async () => {
+      try {
+        const stationId = station.station_id || station.id;
+        const stationData = await fetchStationDetail(stationId, stationType);
+        const agentData = await fetchStationSuggestion(stationId, stationType);
+        showStationCard(stationData, agentData);
+      } catch (error) {
+        console.error("加载站点详情失败:", error);
+      }
+    });
 
-    bindStationClick(stationElement, station);
-    stationLayer.appendChild(stationElement);
+    stationLayer.appendChild(point);
     renderedCount += 1;
   });
 
-  console.log(`已渲染 ${stationType} 站点数量:`, renderedCount);
-
-  // 更新 icon 可见性（安全检查）
-  if (typeof updateStationIconVisibility === 'function' && mapState && mapState.isInitialized) {
-    updateStationIconVisibility();
-  }
+  console.log(`[地图] ${stationType} 已渲染站点数:`, renderedCount);
 }
 
