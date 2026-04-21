@@ -68,6 +68,9 @@ body.map-page {
   background: rgba(255, 255, 255, 0.06);
   cursor: grab;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 #map-viewport.dragging {
@@ -105,6 +108,15 @@ body.map-page {
   position: absolute;
   z-index: 11;
   pointer-events: auto;
+}
+
+#station-layer button img {
+  display: none;
+  transition: display 0.2s ease;
+}
+
+#station-layer button:hover img {
+  display: block !important;
 }
 
 /* ===== 桌面端 ===== */
