@@ -56,19 +56,13 @@ function renderStationLayer(stationType, stations) {
 
       try {
         const stationId = station.station_id || station.id;
-        const stationData = await fetchStationById(stationId, stationType);
-        const agentData = await fetchStationSuggestion(stationId, stationType);
 
-        if (typeof renderStationCard === "function") {
-          renderStationCard(stationData, agentData);
-        } else {
-          console.error("renderStationCard 未定义");
+        if (typeof loadStationCard !== "function") {
+          console.error("loadStationCard 未定义");
           return;
         }
 
-        if (typeof openStationCard === "function") {
-          openStationCard();
-        }
+        await loadStationCard(stationId, stationType);
       } catch (error) {
         console.error("加载站点详情失败:", error);
       }
