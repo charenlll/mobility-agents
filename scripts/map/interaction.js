@@ -7,21 +7,40 @@ let mapState = {
   dragStartX: 0,
   dragStartY: 0,
   dragStartOffsetX: 0,
-  dragStartOffsetY: 0
+  dragStartOffsetY: 0,
+  isInitialized: false
 };
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 5;
 const ICON_VISIBILITY_SCALE = 0.8; // 80% 缩放时显示 icon
 
+function updateStationIconVisibility() {
+  const stationLayer = document.getElementById("station-layer");
+  if (!stationLayer) return;
+  
+  // 根据缩放比例控制 icon 显示
+  if (mapState.scale < ICON_VISIBILITY_SCALE) {
+    stationLayer.classList.add("zoom-hidden");
+  } else {
+    stationLayer.classList.remove("zoom-hidden");
+  }
+}
+
 function initMapInteraction() {
   const viewport = document.getElementById("map-viewport");
   const container = document.getElementById("map-container");
+  const stationLayer = document.getElementById("station-layer");
 
   if (!viewport || !container) {
     console.error("地图容器不存在");
     return;
   }
+
+  // 初始化状态
+  mapState.isInitialized = true;
+  updateStationIconVisibility();
+  console.log("[地图] 交互初始化完成");
 
   // 鼠标滚轮缩放
   viewport.addEventListener("wheel", (e) => {
@@ -126,20 +145,6 @@ function updateMapTransform() {
   
   // 根据缩放比例显示/隐藏 icon
   updateStationIconVisibility();
-}
-
-function updateStationIconVisibility() {
-  const stationLayer = document.getElementById("station-layer");
-  if (!stationLayer) return;
-  
-  const icons = stationLayer.querySelectorAll("button img");
-  icons.forEach((icon) => {
-    if (mapState.scale >= ICON_VISIBILITY_SCALE) {
-      icon.style.display = "block";
-    } else {
-      icon.style.display = "none";
-    }
-  });
 }
 
 // ===== 站点点击事件 =====
