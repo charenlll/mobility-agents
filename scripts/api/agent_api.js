@@ -1,5 +1,7 @@
+const BASE_URL = "https://mobility-backend-two.vercel.app";
+
 async function fetchStationSuggestion(stationId, stationType) {
-  const response = await fetch("http://127.0.0.1:8000/agent/suggest", {
+  const response = await fetch(`${BASE_URL}/agent/suggest`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -16,4 +18,3 @@ async function fetchStationSuggestion(stationId, stationType) {
 
   return await response.json();
 }
-
