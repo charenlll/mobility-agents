@@ -59,12 +59,15 @@ function renderStationLayer(stationType, stations) {
         const stationData = await fetchStationById(stationId, stationType);
         const agentData = await fetchStationSuggestion(stationId, stationType);
 
-        if (typeof showStationCard === "function") {
-          showStationCard(stationData, agentData);
-        } else if (typeof renderStationCard === "function") {
+        if (typeof renderStationCard === "function") {
           renderStationCard(stationData, agentData);
         } else {
-          console.error("未找到站点卡片展示函数");
+          console.error("renderStationCard 未定义");
+          return;
+        }
+
+        if (typeof openStationCard === "function") {
+          openStationCard();
         }
       } catch (error) {
         console.error("加载站点详情失败:", error);
@@ -80,4 +83,3 @@ function renderStationLayer(stationType, stations) {
 
   console.log(`[地图] ${stationType} 已渲染站点数:`, renderedCount);
 }
-
