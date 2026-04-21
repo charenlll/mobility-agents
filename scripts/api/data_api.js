@@ -1,5 +1,5 @@
 async function fetchAllStations(stationType) {
-  const url = `${API_CONFIG.BASE_URL}/stations?type=${encodeURIComponent(stationType)}`;
+  const url = `${API_BASE_URL}/stations?type=${encodeURIComponent(stationType)}`;
 
   const response = await fetch(url);
 
@@ -17,7 +17,7 @@ async function fetchAllStations(stationType) {
 }
 
 async function fetchStationDetail(stationId, stationType) {
-  const url = `${API_CONFIG.BASE_URL}/station?station_id=${encodeURIComponent(stationId)}&type=${encodeURIComponent(stationType)}`;
+  const url = `${API_BASE_URL}/station?station_id=${encodeURIComponent(stationId)}&type=${encodeURIComponent(stationType)}`;
 
   const response = await fetch(url);
 
@@ -35,7 +35,7 @@ async function fetchStationDetail(stationId, stationType) {
 }
 
 async function fetchStationSuggestion(stationId, stationType) {
-  const url = `${API_CONFIG.BASE_URL}/agent/suggest`;
+  const url = `${API_BASE_URL}/agent/suggest`;
 
   console.log("[API] 获取智能建议 URL:", url);
   console.log("[API] 获取智能建议参数:", {
@@ -69,3 +69,4 @@ async function fetchStationSuggestion(stationId, stationType) {
 
   return result;
 }
+
