@@ -1,39 +1,84 @@
-/* ===== 通用站点详情覆盖层 ===== */
-#station-card-overlay {
+/* ===== 桌面端站点详情面板 ===== */
+#station-card-panel,
+.station-card-panel {
+  display: none;
+  position: fixed;
+  top: 92px;
+  right: 18px;
+  width: min(380px, calc(100vw - 36px));
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(110, 168, 254, 0.22);
+  border-radius: 20px;
+  box-shadow: 0 20px 48px rgba(13, 41, 79, 0.24);
+  backdrop-filter: blur(14px);
+  z-index: 3000;
+  padding: 18px 16px 16px;
+}
+
+#station-card-content {
+  min-height: 40px;
+  padding-top: 12px;
+}
+
+/* ===== 通用关闭按钮 ===== */
+.station-card-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+}
+
+/* ===== 移动端底部抽屉 ===== */
+#mobile-station-card-overlay,
+.mobile-station-card-overlay {
   display: none;
   position: fixed;
   inset: 0;
   background: rgba(10, 24, 44, 0.38);
-  z-index: 3000;
-  padding: 20px 16px;
-  overflow: auto;
+  z-index: 3200;
 }
 
-.station-card-modal {
-  width: min(760px, 100%);
-  margin: 5vh auto 0;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(110, 168, 254, 0.22);
-  border-radius: 24px;
-  box-shadow: 0 20px 48px rgba(13, 41, 79, 0.24);
-  padding: 18px;
-  backdrop-filter: blur(14px);
+.mobile-station-card-inner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-height: 82vh;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -12px 32px rgba(13, 41, 79, 0.18);
+  padding: 18px 16px 20px;
 }
 
-#station-card-overlay-container {
+#mobile-station-card-content {
   min-height: 40px;
+  padding-top: 12px;
 }
 
-/* ===== 兼容旧移动端层 ===== */
-#mobile-station-card-overlay {
-  display: none !important;
+/* ===== 桌面/移动端显隐规则 ===== */
+@media (max-width: 768px) {
+  #station-card-panel,
+  .station-card-panel {
+    display: none !important;
+  }
 }
 
-.mobile-overlay-inner {
-  max-width: 760px;
-  margin: 0 auto;
-}
-
-.mobile-overlay-header {
-  margin-bottom: 14px;
+@media (min-width: 769px) {
+  #mobile-station-card-overlay,
+  .mobile-station-card-overlay {
+    display: none !important;
+  }
 }
