@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>地铁系统</title>
+  <link rel="stylesheet" href="../styles/app.css" />
+</head>
+<body class="map-page">
+  <header class="top-bar">
+    <div class="brand-title">Mobility Agents System</div>
+    <div class="nav-group">
+      <button onclick="goHome()">首页</button>
+      <button onclick="goPage('./bus_map.html')">公交系统</button>
+      <button onclick="goPage('./about.html')">系统说明</button>
+    </div>
+  </header>
+
+  <main class="map-page-shell">
+    <div class="page-container">
+      <div class="page-header">
+        <button class="inline-back" onclick="goHome()">返回首页</button>
+
+        <section class="glass-card page-title-card">
+          <h1 class="page-title">地铁系统</h1>
+        </section>
+      </div>
+
+      <section class="map-toolbar">
+        <div class="map-tip">滚轮可缩放地图，按住鼠标拖拽可平移</div>
+      </section>
+
+      <section class="map-stage-section">
+        <div id="map-viewport">
+          <div id="map-container">
+            <img
+              id="map-image"
+              src="../assets/images/metro_map.jpg"
+              alt="地铁地图"
+            />
+            <div id="station-layer"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 旧逻辑写入容器：隐藏但保留 -->
+  <div id="station-card-panel" style="display:none;">
+    <div id="station-card-container"></div>
+  </div>
+
+  <!-- 新展示覆盖层 -->
+  <div id="station-card-overlay">
+    <div class="station-card-modal">
+      <div class="station-panel-header">
+        <div class="station-panel-title">站点详情</div>
+        <button class="panel-close-btn" onclick="closeStationCard()">关闭</button>
+      </div>
+      <div id="station-card-overlay-container"></div>
+    </div>
+  </div>
+
+  <div id="mobile-station-card-overlay" style="display:none;">
+    <div class="mobile-overlay-inner">
+      <div class="mobile-overlay-header">
+        <button class="mobile-back-btn" onclick="closeMobileStationCard()">返回</button>
+      </div>
+      <div id="mobile-station-card-container"></div>
+    </div>
+  </div>
+
+  <script src="../scripts/utils/constants.js"></script>
+  <script src="../scripts/api/data_api.js"></script>
+
+  <script src="../scripts/card/suggestion_renderer.js"></script>
+  <script src="../scripts/card/chart_renderer.js"></script>
+  <script src="../scripts/card/card_renderer.js"></script>
+  <script src="../scripts/card/card_controller.js"></script>
+
+  <script src="../scripts/map/geo_mapper.js"></script>
+  <script src="../scripts/map/station_layer.js"></script>
+  <script src="../scripts/map/interaction.js"></script>
+  <script src="../scripts/map/map_init.js"></script>
+
+  <script>
+    function goHome() {
+      window.location.href = '../index.html';
+    }
+
+    function goPage(path) {
+      window.location.href = path;
+    }
+
+    function setupStationCardOverlay() {
+      const overlay = document.getElementById("station-card-overlay");
+      const oldContainer = document.getElementById("station-card-container");
+      const overlayContainer = document.getElementById("station-card-overlay-container");
+
+      if (!overlay || !oldContainer || !overlayContainer) return;
+
+      function openOverlayIfHasContent() {
+        const html = oldContainer.innerHTML.trim();
+        if (html) {
+          overlayContainer.innerHTML = html;
+          overlay.style.display = "block";
+        }
+      }
+
+      const observer = new MutationObserver(() => {
+        openOverlayIfHasContent();
+      });
+
+      observer.observe(oldContainer, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+
+      const rawClose = window.closeStationCard;
+      window.closeStationCard = function () {
+        overlay.style.display = "none";
+        overlayContainer.innerHTML = "";
+        oldContainer.innerHTML = "";
+        if (typeof rawClose === "function") {
+          rawClose();
+        }
+      };
+
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+          window.closeStationCard();
+        }
+      });
+    }
+
+    function initMapViewer() {
+      const viewport = document.getElementById("map-viewport");
+      const mapContainer = document.getElementById("map-container");
+      const mapImage = document.getElementById("map-image");
+      const stationLayer = document.getElementById("station-layer");
+
+      if (!viewport || !mapContainer || !mapImage || !stationLayer) return;
+
+      let scale = 1;
+      let minScale = 1;
+      let maxScale = 4;
+
+      let translateX = 0;
+      let translateY = 0;
+
+      let isDragging = false;
+      let dragStartX = 0;
+      let dragStartY = 0;
+      let dragOriginX = 0;
+      let dragOriginY = 0;
+
+      function syncLayerSize() {
+        stationLayer.style.width = mapImage.offsetWidth + "px";
+        stationLayer.style.height = mapImage.offsetHeight + "px";
+      }
+
+      function getImageWidth() {
+        return mapImage.offsetWidth;
+      }
+
+      function getImageHeight() {
+        return mapImage.offsetHeight;
+      }
+
+      function getScaledWidth() {
+        return getImageWidth() * scale;
+      }
+
+      function getScaledHeight() {
+        return getImageHeight() * scale;
+      }
+
+      function clampTranslate() {
+        const vw = viewport.clientWidth;
+        const vh = viewport.clientHeight;
+        const scaledWidth = getScaledWidth();
+        const scaledHeight = getScaledHeight();
+
+        if (scaledWidth <= vw) {
+          translateX = (vw - scaledWidth) / 2;
+        } else {
+          const minX = vw - scaledWidth;
+          const maxX = 0;
+          translateX = Math.min(maxX, Math.max(minX, translateX));
+        }
+
+        if (scaledHeight <= vh) {
+          translateY = (vh - scaledHeight) / 2;
+        } else {
+          const minY = vh - scaledHeight;
+          const maxY = 0;
+          translateY = Math.min(maxY, Math.max(minY, translateY));
+        }
+      }
+
+      function applyTransform() {
+        clampTranslate();
+        mapContainer.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        updateIconScale(scale);
+      }
+
+      function updateIconScale(currentScale) {
+        const stationButtons = stationLayer.querySelectorAll("button");
+        const baseSize = 40;
+        const adaptiveSize = Math.max(baseSize / currentScale, 20);
+        
+        stationButtons.forEach(btn => {
+          btn.style.width = `${adaptiveSize}px`;
+          btn.style.height = `${adaptiveSize}px`;
+          const img = btn.querySelector("img");
+          if (img) {
+            img.style.width = `${adaptiveSize}px`;
+            img.style.height = `${adaptiveSize}px`;
+          }
+        });
+      }
+
+      function updateCoverScale() {
+        const vw = viewport.clientWidth;
+        const vh = viewport.clientHeight;
+        const iw = getImageWidth();
+        const ih = getImageHeight();
+
+        if (!iw || !ih) return;
+
+        minScale = Math.max(vw / iw, vh / ih);
+        if (scale < minScale) {
+          scale = minScale;
+        }
+      }
+
+      function resetToCover() {
+        updateCoverScale();
+        const vw = viewport.clientWidth;
+        const vh = viewport.clientHeight;
+        const scaledWidth = getScaledWidth();
+        const scaledHeight = getScaledHeight();
+
+        translateX = (vw - scaledWidth) / 2;
+        translateY = (vh - scaledHeight) / 2;
+
+        applyTransform();
+      }
+
+      function zoomAtPoint(delta, clientX, clientY) {
+        const rect = viewport.getBoundingClientRect();
+        const offsetX = clientX - rect.left;
+        const offsetY = clientY - rect.top;
+
+        const prevScale = scale;
+        let nextScale = scale * (delta > 0 ? 1.12 : 0.88);
+        nextScale = Math.max(minScale, Math.min(maxScale, nextScale));
+
+        if (nextScale === prevScale) return;
+
+        const worldX = (offsetX - translateX) / prevScale;
+        const worldY = (offsetY - translateY) / prevScale;
+
+        scale = nextScale;
+        translateX = offsetX - worldX * scale;
+        translateY = offsetY - worldY * scale;
+
+        applyTransform();
+      }
+
+      viewport.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        zoomAtPoint(-event.deltaY, event.clientX, event.clientY);
+      }, { passive: false });
+
+      viewport.addEventListener("mousedown", (event) => {
+        isDragging = true;
+        viewport.classList.add("dragging");
+        dragStartX = event.clientX;
+        dragStartY = event.clientY;
+        dragOriginX = translateX;
+        dragOriginY = translateY;
+      });
+
+      window.addEventListener("mousemove", (event) => {
+        if (!isDragging) return;
+        translateX = dragOriginX + (event.clientX - dragStartX);
+        translateY = dragOriginY + (event.clientY - dragStartY);
+        applyTransform();
+      });
+
+      window.addEventListener("mouseup", () => {
+        isDragging = false;
+        viewport.classList.remove("dragging");
+      });
+
+      window.addEventListener("resize", () => {
+        syncLayerSize();
+        resetToCover();
+      });
+
+      syncLayerSize();
+      resetToCover();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const mapImage = document.getElementById("map-image");
+
+      const runInit = () => {
+        initMap("metro");
+        setupStationCardOverlay();
+        initMapViewer();
+      };
+
+      if (mapImage.complete) {
+        runInit();
+      } else {
+        mapImage.onload = runInit;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>系统说明</title>
+  <link rel="stylesheet" href="../styles/app.css" />
+</head>
+<body>
+  <header class="top-bar">
+    <div class="brand-title">Mobility Agents System</div>
+    <div class="nav-group">
+      <button onclick="goHome()">首页</button>
+      <button onclick="goPage('./bus_map.html')">公交系统</button>
+      <button onclick="goPage('./metro_map.html')">地铁系统</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="page-container">
+      <div class="page-header">
+        <button class="inline-back" onclick="goHome()">返回首页</button>
+
+        <section class="glass-card page-title-card">
+          <h1 class="page-title">系统说明</h1>
+          <p class="page-desc">本页面用于说明当前系统阶段功能与交互链路。</p>
+        </section>
+      </div>
+
+      <section class="about-layout">
+        <div class="glass-card section-card about-card">
+          <h2 class="section-title">当前功能范围</h2>
+          <p>本系统当前阶段主要用于验证公交与地铁站点的前端点击交互链路，支持从页面点击站点、请求后端数据并展示站点信息。</p>
+          <p>用户点击地图图片上的站点图标后，前端会向后端请求站点详情，并结合已有卡片渲染逻辑展示相关内容。</p>
+          <p>首页额外加入了天气与出行推荐模块，用于展示面向日常通勤与城市出行的推荐信息。</p>
+        </div>
+
+        <div class="glass-card section-card about-card highlight-card">
+          <h2 class="section-title">使用提示</h2>
+          <p>系统数据来源于城市公共交通基础信息库与实时气象接口，可满足日常出行查询与基础数据分析需求。</p>
+          <p>页面展示内容均为实时拉取的动态数据，若出现信息更新不及时，可检查数据接口连通性与数据源同步状态。</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <button class="mobile-back" onclick="goHome()">⌂</button>
+
+  <script>
+    function goHome() {
+      window.location.href = '../index.html';
+    }
+
+    function goPage(path) {
+      window.location.href = path;
+    }
+  </script>
+</body>
+</html>

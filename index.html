@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mobility Agents System</title>
+  <link rel="stylesheet" href="./styles/app.css" />
+</head>
+<body>
+  <header class="top-bar">
+    <div class="brand-title">Mobility Agents System</div>
+    <div class="nav-group">
+      <button onclick="goPage('./pages/bus_map.html')">公交系统</button>
+      <button onclick="goPage('./pages/metro_map.html')">地铁系统</button>
+      <button onclick="goPage('./pages/about.html')">系统说明</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="page-container">
+      <section class="glass-card hero-card">
+        <h1 class="hero-title">Mobility Agents System</h1>
+        <p class="hero-subtitle">请选择进入公交系统或地铁系统，并查看首页天气与出行推荐</p>
+
+        <div class="nav-buttons">
+          <button class="menu-btn" onclick="goPage('./pages/bus_map.html')">进入公交系统</button>
+          <button class="menu-btn secondary" onclick="goPage('./pages/metro_map.html')">进入地铁系统</button>
+          <button class="menu-btn ghost" onclick="goPage('./pages/about.html')">查看系统说明</button>
+        </div>
+      </section>
+
+      <section id="weather-recommendation-container" class="glass-card section-card home-section">
+        <h2 class="section-title">武汉天气与出行推荐</h2>
+
+        <div class="info-grid">
+          <div id="weather-card" class="sub-card info-block">
+            <p>天气信息加载中...</p>
+          </div>
+
+          <div id="travel-card" class="sub-card info-block">
+            <p>出行推荐加载中...</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="./scripts/utils/constants.js"></script>
+  <script src="./scripts/api/home_api.js"></script>
+  <script src="./scripts/pages/index.js"></script>
+
+  <script>
+    function goPage(path) {
+      window.location.href = path;
+    }
+  </script>
+</body>
+</html>
