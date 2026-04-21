@@ -30,4 +30,7 @@ async function initMap(stationType) {
   window.addEventListener("resize", () => {
     render();
   });
+  
+  // 初始化地图交互（缩放、拖拽）
+  initMapInteraction();
 }
