@@ -3,46 +3,28 @@ const STATION_TYPES = {
   METRO: "metro"
 };
 
-/**
- * API 地址配置
- *
- * 本地开发:
- *   http://127.0.0.1:8000
- *
- * 线上部署:
- *   https://你的-vercel-后端地址.vercel.app
- */
 const API_CONFIG = {
   PROD_BASE_URL: "https://mobility-backend-two.vercel.app"
 };
 
-function getApiBaseUrl() {
-  // 始终使用生产 Vercel URL，用于网络部署
-  return API_CONFIG.PROD_BASE_URL;
-}
+const API_BASE_URL = API_CONFIG.PROD_BASE_URL;
 
-const API_BASE_URL = getApiBaseUrl();
-
-console.log("[API] 当前 API 地址:", API_BASE_URL);
-
-/**
- * 图片地理参考参数
- */
 const GEO_REFERENCE = {
   bus: {
-    pixel_width: 0.000236914764047,
-    rotation_x: 0.0,
-    rotation_y: 0.0,
-    pixel_height: -0.000236922361802,
-    top_left_lng: 113.593629786185218,
-    top_left_lat: 31.007584650442929
+    topLeft: { longitude: 113.95, latitude: 30.70 },
+    bottomRight: { longitude: 114.65, latitude: 30.35 }
   },
   metro: {
-    pixel_width: 0.000236914764047,
-    rotation_x: 0.0,
-    rotation_y: 0.0,
-    pixel_height: -0.000236922361802,
-    top_left_lng: 113.593629786185218,
-    top_left_lat: 31.007584650442929
+    topLeft: { longitude: 113.95, latitude: 30.70 },
+    bottomRight: { longitude: 114.65, latitude: 30.35 }
   }
 };
+
+function goHome() {
+  window.location.href = "../index.html";
+}
+
+function goPage(path) {
+  window.location.href = path;
+}
+
