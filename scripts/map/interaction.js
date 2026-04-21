@@ -8,7 +8,14 @@ let mapState = {
   dragStartY: 0,
   dragStartOffsetX: 0,
   dragStartOffsetY: 0,
-  isInitialized: false
+  isInitialized: false,
+  touchMode: null,
+  touchStartDistance: 0,
+  touchStartScale: 1,
+  touchStartCenterX: 0,
+  touchStartCenterY: 0,
+  touchWorldX: 0,
+  touchWorldY: 0
 };
 
 const MIN_SCALE = 0.5;
@@ -63,6 +70,36 @@ function fitMapToViewport() {
   updateMapTransform();
 }
 
+function clampScale(scale) {
+  return Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
+}
+
+function getTouchDistance(touch1, touch2) {
+  const dx = touch2.clientX - touch1.clientX;
+  const dy = touch2.clientY - touch1.clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getTouchCenter(touch1, touch2, viewportRect) {
+  return {
+    x: ((touch1.clientX + touch2.clientX) / 2) - viewportRect.left,
+    y: ((touch1.clientY + touch2.clientY) / 2) - viewportRect.top
+  };
+}
+
+function zoomAtPoint(pointX, pointY, newScale) {
+  const clampedScale = clampScale(newScale);
+
+  const worldX = (pointX - mapState.offsetX) / mapState.scale;
+  const worldY = (pointY - mapState.offsetY) / mapState.scale;
+
+  mapState.offsetX = pointX - worldX * clampedScale;
+  mapState.offsetY = pointY - worldY * clampedScale;
+  mapState.scale = clampedScale;
+
+  updateMapTransform();
+}
+
 function initMapInteraction() {
   const viewport = document.getElementById("map-viewport");
 
@@ -75,6 +112,7 @@ function initMapInteraction() {
   fitMapToViewport();
   console.log("[地图] 交互初始化完成");
 
+  // ===== 桌面端滚轮缩放 =====
   viewport.addEventListener("wheel", (e) => {
     e.preventDefault();
 
@@ -83,18 +121,12 @@ function initMapInteraction() {
     const mouseY = e.clientY - rect.top;
 
     const scrollDelta = e.deltaY > 0 ? -0.1 : 0.1;
-    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, mapState.scale + scrollDelta));
+    const newScale = mapState.scale + scrollDelta;
 
-    const worldX = (mouseX - mapState.offsetX) / mapState.scale;
-    const worldY = (mouseY - mapState.offsetY) / mapState.scale;
-
-    mapState.offsetX = mouseX - worldX * newScale;
-    mapState.offsetY = mouseY - worldY * newScale;
-    mapState.scale = newScale;
-
-    updateMapTransform();
+    zoomAtPoint(mouseX, mouseY, newScale);
   }, { passive: false });
 
+  // ===== 桌面端鼠标拖拽 =====
   viewport.addEventListener("mousedown", (e) => {
     mapState.isDragging = true;
     mapState.dragStartX = e.clientX;
@@ -122,7 +154,87 @@ function initMapInteraction() {
     viewport.classList.remove("dragging");
   });
 
+  // ===== 手机端触摸拖拽 + 双指缩放 =====
+  viewport.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      mapState.touchMode = "pan";
+      mapState.dragStartX = touch.clientX;
+      mapState.dragStartY = touch.clientY;
+      mapState.dragStartOffsetX = mapState.offsetX;
+      mapState.dragStartOffsetY = mapState.offsetY;
+    } else if (e.touches.length === 2) {
+      const rect = viewport.getBoundingClientRect();
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const center = getTouchCenter(touch1, touch2, rect);
+
+      mapState.touchMode = "pinch";
+      mapState.touchStartDistance = getTouchDistance(touch1, touch2);
+      mapState.touchStartScale = mapState.scale;
+      mapState.touchStartCenterX = center.x;
+      mapState.touchStartCenterY = center.y;
+      mapState.touchWorldX = (center.x - mapState.offsetX) / mapState.scale;
+      mapState.touchWorldY = (center.y - mapState.offsetY) / mapState.scale;
+    }
+  }, { passive: false });
+
+  viewport.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 1 && mapState.touchMode === "pan") {
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - mapState.dragStartX;
+      const deltaY = touch.clientY - mapState.dragStartY;
+
+      mapState.offsetX = mapState.dragStartOffsetX + deltaX;
+      mapState.offsetY = mapState.dragStartOffsetY + deltaY;
+
+      updateMapTransform();
+    } else if (e.touches.length === 2) {
+      e.preventDefault();
+
+      const rect = viewport.getBoundingClientRect();
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+
+      const currentDistance = getTouchDistance(touch1, touch2);
+      if (!mapState.touchStartDistance) return;
+
+      const scaleRatio = currentDistance / mapState.touchStartDistance;
+      const newScale = clampScale(mapState.touchStartScale * scaleRatio);
+
+      const center = getTouchCenter(touch1, touch2, rect);
+
+      mapState.scale = newScale;
+      mapState.offsetX = center.x - mapState.touchWorldX * newScale;
+      mapState.offsetY = center.y - mapState.touchWorldY * newScale;
+
+      updateMapTransform();
+    }
+  }, { passive: false });
+
+  viewport.addEventListener("touchend", (e) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      mapState.touchMode = "pan";
+      mapState.dragStartX = touch.clientX;
+      mapState.dragStartY = touch.clientY;
+      mapState.dragStartOffsetX = mapState.offsetX;
+      mapState.dragStartOffsetY = mapState.offsetY;
+    } else if (e.touches.length === 0) {
+      mapState.touchMode = null;
+      mapState.touchStartDistance = 0;
+    }
+  });
+
+  viewport.addEventListener("touchcancel", () => {
+    mapState.touchMode = null;
+    mapState.touchStartDistance = 0;
+  });
+
   window.addEventListener("resize", () => {
     fitMapToViewport();
   });
 }
+
