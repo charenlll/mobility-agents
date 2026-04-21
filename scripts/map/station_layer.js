@@ -18,13 +18,8 @@ function renderStationLayer(stationType, stations) {
 
   const stationList = Array.isArray(stations) ? stations : [];
 
-  const imageWidth = mapImage.clientWidth || mapImage.naturalWidth;
-  const imageHeight = mapImage.clientHeight || mapImage.naturalHeight;
-
-  if (!imageWidth || !imageHeight) {
-    console.error("地图尺寸无效，无法渲染站点");
-    return;
-  }
+  const imageWidth = mapImage.naturalWidth || mapImage.clientWidth;
+  const imageHeight = mapImage.naturalHeight || mapImage.clientHeight;
 
   let renderedCount = 0;
 
@@ -41,27 +36,36 @@ function renderStationLayer(stationType, stations) {
     const pixel = geoToPixel(
       Number(station.longitude),
       Number(station.latitude),
-      geoReference,
-      imageWidth,
-      imageHeight
+      geoReference
     );
 
-    if (!pixel) {
+    if (!pixel || Number.isNaN(pixel.x) || Number.isNaN(pixel.y)) {
       return;
     }
 
     const point = document.createElement("button");
     point.className = "station-point";
+    point.type = "button";
     point.style.left = `${pixel.x}px`;
     point.style.top = `${pixel.y}px`;
     point.title = station.station_name || station.name || "未命名站点";
 
-    point.addEventListener("click", async () => {
+    point.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
       try {
         const stationId = station.station_id || station.id;
-        const stationData = await fetchStationDetail(stationId, stationType);
+        const stationData = await fetchStationById(stationId, stationType);
         const agentData = await fetchStationSuggestion(stationId, stationType);
-        showStationCard(stationData, agentData);
+
+        if (typeof showStationCard === "function") {
+          showStationCard(stationData, agentData);
+        } else if (typeof renderStationCard === "function") {
+          renderStationCard(stationData, agentData);
+        } else {
+          console.error("未找到站点卡片展示函数");
+        }
       } catch (error) {
         console.error("加载站点详情失败:", error);
       }
@@ -70,6 +74,9 @@ function renderStationLayer(stationType, stations) {
     stationLayer.appendChild(point);
     renderedCount += 1;
   });
+
+  stationLayer.style.width = `${imageWidth}px`;
+  stationLayer.style.height = `${imageHeight}px`;
 
   console.log(`[地图] ${stationType} 已渲染站点数:`, renderedCount);
 }
