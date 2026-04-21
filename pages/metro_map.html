@@ -45,28 +45,18 @@
     </div>
   </main>
 
-  <div id="station-card-panel" style="display:none;">
-    <div id="station-card-container"></div>
+  <div id="station-card-panel" class="station-card-panel" style="display: none;">
+    <button class="station-card-close" onclick="closeStationCard()">×</button>
+    <div id="station-card-content"></div>
   </div>
 
-  <div id="station-card-overlay">
-    <div class="station-card-modal">
-      <div class="station-panel-header">
-        <div class="station-panel-title">站点详情</div>
-        <button class="panel-close-btn" onclick="closeStationCard()">关闭</button>
-      </div>
-      <div id="station-card-overlay-container"></div>
+  <div id="mobile-station-card-overlay" class="mobile-station-card-overlay" style="display: none;">
+    <div class="mobile-station-card-inner">
+      <button class="station-card-close" onclick="closeMobileStationCard()">×</button>
+      <div id="mobile-station-card-content"></div>
     </div>
   </div>
 
-  <div id="mobile-station-card-overlay" style="display:none;">
-    <div class="mobile-overlay-inner">
-      <div class="mobile-overlay-header">
-        <button class="mobile-back-btn" onclick="closeMobileStationCard()">返回</button>
-      </div>
-      <div id="mobile-station-card-container"></div>
-    </div>
-  </div>
 
   <script src="../scripts/utils/constants.js"></script>
   <script src="../scripts/api/data_api.js"></script>
@@ -89,4 +79,5 @@
   </script>
 </body>
 </html>
+
 
