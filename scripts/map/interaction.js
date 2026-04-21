@@ -70,6 +70,7 @@ function initMapInteraction() {
     mapState.dragStartOffsetX = mapState.offsetX;
     mapState.dragStartOffsetY = mapState.offsetY;
     viewport.classList.add("dragging");
+    e.preventDefault();
   });
 
   document.addEventListener("mousemove", (e) => {
@@ -78,8 +79,25 @@ function initMapInteraction() {
     const deltaX = e.clientX - mapState.dragStartX;
     const deltaY = e.clientY - mapState.dragStartY;
     
-    mapState.offsetX = mapState.dragStartOffsetX + deltaX;
-    mapState.offsetY = mapState.dragStartOffsetY + deltaY;
+    // 计算新的偏移并进行边界限制
+    let newOffsetX = mapState.dragStartOffsetX + deltaX;
+    let newOffsetY = mapState.dragStartOffsetY + deltaY;
+    
+    // 根据缩放比例计算可用的拖拽范围
+    const mapImage = document.getElementById("map-image");
+    if (mapImage) {
+      const viewportRect = viewport.getBoundingClientRect();
+      const maxOffsetX = 0;
+      const minOffsetX = viewportRect.width - (mapImage.offsetWidth * mapState.scale);
+      const maxOffsetY = 0;
+      const minOffsetY = viewportRect.height - (mapImage.offsetHeight * mapState.scale);
+      
+      newOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, newOffsetX));
+      newOffsetY = Math.max(minOffsetY, Math.min(maxOffsetY, newOffsetY));
+    }
+    
+    mapState.offsetX = newOffsetX;
+    mapState.offsetY = newOffsetY;
     
     updateMapTransform();
   });
@@ -95,46 +113,68 @@ function initMapInteraction() {
 
   viewport.addEventListener("touchstart", (e) => {
     if (e.touches.length === 2) {
+      // 两指缩放模式
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       touchStartDistance = Math.sqrt(dx * dx + dy * dy);
       touchStartScale = mapState.scale;
+      mapState.isDragging = false; // 禁用拖拽
     } else if (e.touches.length === 1) {
+      // 单指拖拽模式
       mapState.isDragging = true;
       mapState.dragStartX = e.touches[0].clientX;
       mapState.dragStartY = e.touches[0].clientY;
       mapState.dragStartOffsetX = mapState.offsetX;
       mapState.dragStartOffsetY = mapState.offsetY;
     }
-  });
+  }, { passive: true });
 
   viewport.addEventListener("touchmove", (e) => {
     if (e.touches.length === 2) {
       // 两指缩放
+      e.preventDefault();
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      const scaleFactor = distance / touchStartDistance;
+      const scaleFactor = distance / (touchStartDistance || 1);
       const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, touchStartScale * scaleFactor));
       
       mapState.scale = newScale;
       updateMapTransform();
     } else if (e.touches.length === 1 && mapState.isDragging) {
       // 单指拖拽
+      e.preventDefault();
       const deltaX = e.touches[0].clientX - mapState.dragStartX;
       const deltaY = e.touches[0].clientY - mapState.dragStartY;
       
-      mapState.offsetX = mapState.dragStartOffsetX + deltaX;
-      mapState.offsetY = mapState.dragStartOffsetY + deltaY;
+      // 计算新的偏移并进行边界限制
+      let newOffsetX = mapState.dragStartOffsetX + deltaX;
+      let newOffsetY = mapState.dragStartOffsetY + deltaY;
+      
+      // 根据缩放比例计算可用的拖拽范围
+      const mapImage = document.getElementById("map-image");
+      if (mapImage) {
+        const viewportRect = viewport.getBoundingClientRect();
+        const maxOffsetX = 0;
+        const minOffsetX = viewportRect.width - (mapImage.offsetWidth * mapState.scale);
+        const maxOffsetY = 0;
+        const minOffsetY = viewportRect.height - (mapImage.offsetHeight * mapState.scale);
+        
+        newOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, newOffsetX));
+        newOffsetY = Math.max(minOffsetY, Math.min(maxOffsetY, newOffsetY));
+      }
+      
+      mapState.offsetX = newOffsetX;
+      mapState.offsetY = newOffsetY;
       
       updateMapTransform();
     }
-  }, { passive: true });
+  }, { passive: false });
 
   viewport.addEventListener("touchend", () => {
     mapState.isDragging = false;
     touchStartDistance = 0;
-  });
+  }, { passive: true });
 }
 
 function updateMapTransform() {
