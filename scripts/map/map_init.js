@@ -2,35 +2,36 @@ async function initMap(stationType) {
   const mapImage = document.getElementById("map-image");
 
   if (!mapImage) {
-    console.error("未找到地图图片元素 map-image");
+    console.error("地图图片元素不存在");
     return;
   }
 
-  let stations = [];
+  const loadStationsAndRender = async () => {
+    try {
+      console.log(`[地图] 开始加载 ${stationType} 站点数据`);
+      const stations = await fetchAllStations(stationType);
+      console.log(`[地图] ${stationType} 站点数量:`, Array.isArray(stations) ? stations.length : 0);
 
-  try {
-    stations = await fetchAllStations(stationType);
-  } catch (error) {
-    console.error("加载站点列表失败:", error);
-    return;
-  }
+      renderStationLayer(stationType, stations);
 
-  const render = () => {
-    renderStationLayer(stationType, stations);
+      if (typeof initMapInteraction === "function") {
+        initMapInteraction();
+      }
+    } catch (error) {
+      console.error(`[地图] 初始化失败:`, error);
+    }
   };
 
   if (mapImage.complete) {
-    render();
-  } else {
-    mapImage.onload = () => {
-      render();
-    };
+    await loadStationsAndRender();
+    return;
   }
 
-  window.addEventListener("resize", () => {
-    render();
-  });
-  
-  // 初始化地图交互（缩放、拖拽）
-  initMapInteraction();
+  mapImage.addEventListener("load", async () => {
+    await loadStationsAndRender();
+  }, { once: true });
+
+  mapImage.addEventListener("error", () => {
+    console.error("地图图片加载失败:", mapImage.src);
+  }, { once: true });
 }
