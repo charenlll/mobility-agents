@@ -1,5 +1,5 @@
 async function fetchHomeWeatherRecommendation() {
-  const url = `${API_CONFIG.BASE_URL}/home/weather-recommendation`;
+  const url = `${API_BASE_URL}/home/weather-recommendation`;
 
   console.log("[API] 请求首页天气推荐 URL:", url);
 
