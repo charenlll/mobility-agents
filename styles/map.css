@@ -111,12 +111,19 @@ body.map-page {
 }
 
 #station-layer button img {
+  display: block;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* 缩放 < 80% 时隐藏 icon */
+#station-layer.zoom-hidden button img {
   display: none;
-  transition: display 0.2s ease;
 }
 
 #station-layer button:hover img {
   display: block !important;
+  opacity: 1 !important;
 }
 
 /* ===== 桌面端 ===== */
@@ -153,3 +160,4 @@ body.map-page {
     font-size: 13px;
   }
 }
+
