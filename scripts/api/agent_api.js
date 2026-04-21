@@ -16,3 +16,4 @@ async function fetchStationSuggestion(stationId, stationType) {
 
   return await response.json();
 }
+
