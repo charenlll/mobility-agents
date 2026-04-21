@@ -91,8 +91,9 @@ function renderStationLayer(stationType, stations) {
 
   console.log(`已渲染 ${stationType} 站点数量:`, renderedCount);
 
-  // 更新 icon 可见性
-  if (typeof updateStationIconVisibility === 'function') {
+  // 更新 icon 可见性（安全检查）
+  if (typeof updateStationIconVisibility === 'function' && mapState && mapState.isInitialized) {
     updateStationIconVisibility();
   }
 }
+
