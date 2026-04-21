@@ -3,24 +3,26 @@ let mapState = {
   scale: 1,
   offsetX: 0,
   offsetY: 0,
-  isDragging: false,
-  dragStartX: 0,
-  dragStartY: 0,
-  dragStartOffsetX: 0,
-  dragStartOffsetY: 0,
-  isInitialized: false,
-  touchMode: null,
-  touchStartDistance: 0,
-  touchStartScale: 1,
-  touchStartCenterX: 0,
-  touchStartCenterY: 0,
-  touchWorldX: 0,
-  touchWorldY: 0
+  isInitialized: false
 };
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 5;
 const ICON_VISIBILITY_SCALE = 0.8;
+
+const pointerState = {
+  pointers: new Map(),
+  isMouseDragging: false,
+  mouseStartX: 0,
+  mouseStartY: 0,
+  mouseStartOffsetX: 0,
+  mouseStartOffsetY: 0,
+  pinchStartDistance: 0,
+  pinchStartScale: 1,
+  pinchWorldX: 0,
+  pinchWorldY: 0,
+  isPinching: false
+};
 
 function updateStationIconVisibility() {
   const stationLayer = document.getElementById("station-layer");
@@ -74,19 +76,6 @@ function clampScale(scale) {
   return Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
 }
 
-function getTouchDistance(touch1, touch2) {
-  const dx = touch2.clientX - touch1.clientX;
-  const dy = touch2.clientY - touch1.clientY;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
-function getTouchCenter(touch1, touch2, viewportRect) {
-  return {
-    x: ((touch1.clientX + touch2.clientX) / 2) - viewportRect.left,
-    y: ((touch1.clientY + touch2.clientY) / 2) - viewportRect.top
-  };
-}
-
 function zoomAtPoint(pointX, pointY, newScale) {
   const clampedScale = clampScale(newScale);
 
@@ -96,6 +85,72 @@ function zoomAtPoint(pointX, pointY, newScale) {
   mapState.offsetX = pointX - worldX * clampedScale;
   mapState.offsetY = pointY - worldY * clampedScale;
   mapState.scale = clampedScale;
+
+  updateMapTransform();
+}
+
+function getDistance(pointA, pointB) {
+  const dx = pointB.x - pointA.x;
+  const dy = pointB.y - pointA.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getCenter(pointA, pointB) {
+  return {
+    x: (pointA.x + pointB.x) / 2,
+    y: (pointA.y + pointB.y) / 2
+  };
+}
+
+function getViewportPoint(viewport, clientX, clientY) {
+  const rect = viewport.getBoundingClientRect();
+  return {
+    x: clientX - rect.left,
+    y: clientY - rect.top
+  };
+}
+
+function resetPinchState() {
+  pointerState.pinchStartDistance = 0;
+  pointerState.pinchStartScale = mapState.scale;
+  pointerState.pinchWorldX = 0;
+  pointerState.pinchWorldY = 0;
+  pointerState.isPinching = false;
+}
+
+function initPointerPinch(viewport) {
+  const points = Array.from(pointerState.pointers.values());
+  if (points.length !== 2) return;
+
+  const p1 = points[0];
+  const p2 = points[1];
+  const center = getCenter(p1, p2);
+
+  pointerState.pinchStartDistance = getDistance(p1, p2);
+  pointerState.pinchStartScale = mapState.scale;
+  pointerState.pinchWorldX = (center.x - mapState.offsetX) / mapState.scale;
+  pointerState.pinchWorldY = (center.y - mapState.offsetY) / mapState.scale;
+  pointerState.isPinching = true;
+}
+
+function updatePointerPinch() {
+  const points = Array.from(pointerState.pointers.values());
+  if (points.length !== 2 || !pointerState.isPinching || !pointerState.pinchStartDistance) {
+    return;
+  }
+
+  const p1 = points[0];
+  const p2 = points[1];
+
+  const currentDistance = getDistance(p1, p2);
+  const center = getCenter(p1, p2);
+
+  const scaleRatio = currentDistance / pointerState.pinchStartDistance;
+  const newScale = clampScale(pointerState.pinchStartScale * scaleRatio);
+
+  mapState.scale = newScale;
+  mapState.offsetX = center.x - pointerState.pinchWorldX * newScale;
+  mapState.offsetY = center.y - pointerState.pinchWorldY * newScale;
 
   updateMapTransform();
 }
@@ -116,125 +171,114 @@ function initMapInteraction() {
   viewport.addEventListener("wheel", (e) => {
     e.preventDefault();
 
-    const rect = viewport.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
+    const point = getViewportPoint(viewport, e.clientX, e.clientY);
     const scrollDelta = e.deltaY > 0 ? -0.1 : 0.1;
     const newScale = mapState.scale + scrollDelta;
 
-    zoomAtPoint(mouseX, mouseY, newScale);
+    zoomAtPoint(point.x, point.y, newScale);
   }, { passive: false });
 
-  // ===== 桌面端鼠标拖拽 =====
+  // ===== 鼠标拖拽 =====
   viewport.addEventListener("mousedown", (e) => {
-    mapState.isDragging = true;
-    mapState.dragStartX = e.clientX;
-    mapState.dragStartY = e.clientY;
-    mapState.dragStartOffsetX = mapState.offsetX;
-    mapState.dragStartOffsetY = mapState.offsetY;
+    if (e.button !== 0) return;
+
+    pointerState.isMouseDragging = true;
+    pointerState.mouseStartX = e.clientX;
+    pointerState.mouseStartY = e.clientY;
+    pointerState.mouseStartOffsetX = mapState.offsetX;
+    pointerState.mouseStartOffsetY = mapState.offsetY;
     viewport.classList.add("dragging");
+
     e.preventDefault();
   });
 
   document.addEventListener("mousemove", (e) => {
-    if (!mapState.isDragging) return;
+    if (!pointerState.isMouseDragging) return;
 
-    const deltaX = e.clientX - mapState.dragStartX;
-    const deltaY = e.clientY - mapState.dragStartY;
+    const deltaX = e.clientX - pointerState.mouseStartX;
+    const deltaY = e.clientY - pointerState.mouseStartY;
 
-    mapState.offsetX = mapState.dragStartOffsetX + deltaX;
-    mapState.offsetY = mapState.dragStartOffsetY + deltaY;
+    mapState.offsetX = pointerState.mouseStartOffsetX + deltaX;
+    mapState.offsetY = pointerState.mouseStartOffsetY + deltaY;
 
     updateMapTransform();
   });
 
   document.addEventListener("mouseup", () => {
-    mapState.isDragging = false;
+    pointerState.isMouseDragging = false;
     viewport.classList.remove("dragging");
   });
 
-  // ===== 手机端触摸拖拽 + 双指缩放 =====
-  viewport.addEventListener("touchstart", (e) => {
-    if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      mapState.touchMode = "pan";
-      mapState.dragStartX = touch.clientX;
-      mapState.dragStartY = touch.clientY;
-      mapState.dragStartOffsetX = mapState.offsetX;
-      mapState.dragStartOffsetY = mapState.offsetY;
-    } else if (e.touches.length === 2) {
-      const rect = viewport.getBoundingClientRect();
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const center = getTouchCenter(touch1, touch2, rect);
+  // ===== Pointer Events：手机/平板触摸支持 =====
+  viewport.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse") return;
 
-      mapState.touchMode = "pinch";
-      mapState.touchStartDistance = getTouchDistance(touch1, touch2);
-      mapState.touchStartScale = mapState.scale;
-      mapState.touchStartCenterX = center.x;
-      mapState.touchStartCenterY = center.y;
-      mapState.touchWorldX = (center.x - mapState.offsetX) / mapState.scale;
-      mapState.touchWorldY = (center.y - mapState.offsetY) / mapState.scale;
+    viewport.setPointerCapture(e.pointerId);
+
+    const point = getViewportPoint(viewport, e.clientX, e.clientY);
+    pointerState.pointers.set(e.pointerId, point);
+
+    if (pointerState.pointers.size === 1) {
+      pointerState.mouseStartX = e.clientX;
+      pointerState.mouseStartY = e.clientY;
+      pointerState.mouseStartOffsetX = mapState.offsetX;
+      pointerState.mouseStartOffsetY = mapState.offsetY;
+    } else if (pointerState.pointers.size === 2) {
+      initPointerPinch(viewport);
     }
-  }, { passive: false });
 
-  viewport.addEventListener("touchmove", (e) => {
-    if (e.touches.length === 1 && mapState.touchMode === "pan") {
-      e.preventDefault();
-
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - mapState.dragStartX;
-      const deltaY = touch.clientY - mapState.dragStartY;
-
-      mapState.offsetX = mapState.dragStartOffsetX + deltaX;
-      mapState.offsetY = mapState.dragStartOffsetY + deltaY;
-
-      updateMapTransform();
-    } else if (e.touches.length === 2) {
-      e.preventDefault();
-
-      const rect = viewport.getBoundingClientRect();
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-
-      const currentDistance = getTouchDistance(touch1, touch2);
-      if (!mapState.touchStartDistance) return;
-
-      const scaleRatio = currentDistance / mapState.touchStartDistance;
-      const newScale = clampScale(mapState.touchStartScale * scaleRatio);
-
-      const center = getTouchCenter(touch1, touch2, rect);
-
-      mapState.scale = newScale;
-      mapState.offsetX = center.x - mapState.touchWorldX * newScale;
-      mapState.offsetY = center.y - mapState.touchWorldY * newScale;
-
-      updateMapTransform();
-    }
-  }, { passive: false });
-
-  viewport.addEventListener("touchend", (e) => {
-    if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      mapState.touchMode = "pan";
-      mapState.dragStartX = touch.clientX;
-      mapState.dragStartY = touch.clientY;
-      mapState.dragStartOffsetX = mapState.offsetX;
-      mapState.dragStartOffsetY = mapState.offsetY;
-    } else if (e.touches.length === 0) {
-      mapState.touchMode = null;
-      mapState.touchStartDistance = 0;
-    }
+    e.preventDefault();
   });
 
-  viewport.addEventListener("touchcancel", () => {
-    mapState.touchMode = null;
-    mapState.touchStartDistance = 0;
+  viewport.addEventListener("pointermove", (e) => {
+    if (e.pointerType === "mouse") return;
+    if (!pointerState.pointers.has(e.pointerId)) return;
+
+    const point = getViewportPoint(viewport, e.clientX, e.clientY);
+    pointerState.pointers.set(e.pointerId, point);
+
+    if (pointerState.pointers.size === 1 && !pointerState.isPinching) {
+      const deltaX = e.clientX - pointerState.mouseStartX;
+      const deltaY = e.clientY - pointerState.mouseStartY;
+
+      mapState.offsetX = pointerState.mouseStartOffsetX + deltaX;
+      mapState.offsetY = pointerState.mouseStartOffsetY + deltaY;
+
+      updateMapTransform();
+    } else if (pointerState.pointers.size === 2) {
+      updatePointerPinch();
+    }
+
+    e.preventDefault();
   });
 
+  function handlePointerEnd(e) {
+    if (e.pointerType !== "mouse") {
+      pointerState.pointers.delete(e.pointerId);
+
+      if (pointerState.pointers.size < 2) {
+        resetPinchState();
+      }
+
+      if (pointerState.pointers.size === 1) {
+        const remainingPoint = Array.from(pointerState.pointers.values())[0];
+        pointerState.mouseStartX = remainingPoint.x;
+        pointerState.mouseStartY = remainingPoint.y;
+        pointerState.mouseStartOffsetX = mapState.offsetX;
+        pointerState.mouseStartOffsetY = mapState.offsetY;
+      }
+    }
+
+    if (viewport.hasPointerCapture && viewport.hasPointerCapture(e.pointerId)) {
+      viewport.releasePointerCapture(e.pointerId);
+    }
+  }
+
+  viewport.addEventListener("pointerup", handlePointerEnd);
+  viewport.addEventListener("pointercancel", handlePointerEnd);
+
+  // ===== 窗口变化时重新适配 =====
   window.addEventListener("resize", () => {
     fitMapToViewport();
   });
 }
-
