@@ -17,16 +17,13 @@ const API_CONFIG = {
 };
 
 function getApiBaseUrl() {
-  const hostname = window.location.hostname;
-
-  const isLocal =
-    hostname === "127.0.0.1" ||
-    hostname === "localhost";
-
-  return isLocal ? API_CONFIG.LOCAL_BASE_URL : API_CONFIG.PROD_BASE_URL;
+  // 始终使用生产 Vercel URL，用于网络部署
+  return API_CONFIG.PROD_BASE_URL;
 }
 
 const API_BASE_URL = getApiBaseUrl();
+
+console.log("[API] 当前 API 地址:", API_BASE_URL);
 
 /**
  * 图片地理参考参数
