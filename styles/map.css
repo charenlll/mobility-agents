@@ -84,6 +84,11 @@ body.map-page {
   line-height: 0;
   transform-origin: top left;
   will-change: transform;
+  /* 限制地图在 viewport 内 */
+  max-width: 100%;
+  max-height: 100%;
+  /* 防止页面滚动 */
+  overflow: hidden;
 }
 
 #map-image {
@@ -160,4 +165,3 @@ body.map-page {
     font-size: 13px;
   }
 }
-
