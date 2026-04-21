@@ -13,7 +13,6 @@ const STATION_TYPES = {
  *   https://你的-vercel-后端地址.vercel.app
  */
 const API_CONFIG = {
-  LOCAL_BASE_URL: "http://127.0.0.1:8000",
   PROD_BASE_URL: "https://mobility-backend-two.vercel.app"
 };
 
