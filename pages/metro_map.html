@@ -27,7 +27,14 @@
       </div>
 
       <section class="map-toolbar">
-        <div class="map-tip">滚轮可缩放地图，按住鼠标拖拽可平移</div>
+        <div>
+          <div class="map-eyebrow">METRO NETWORK</div>
+          <div class="map-tip"><span class="desktop-tip">滚轮缩放，按住拖拽平移</span><span class="mobile-tip">双指缩放，单指拖动地图</span></div>
+        </div>
+        <div class="map-switcher" aria-label="地图系统切换">
+          <button type="button" onclick="goPage('./bus_map.html')">公交</button>
+          <button class="active" type="button" aria-current="page">地铁</button>
+        </div>
       </section>
 
       <section class="map-stage-section">
@@ -39,6 +46,11 @@
               alt="地铁地图"
             />
             <div id="station-layer"></div>
+          </div>
+          <div class="map-controls" aria-label="地图缩放控件">
+            <button type="button" onclick="zoomMapBy(1.25)" aria-label="放大地图">+</button>
+            <button type="button" onclick="zoomMapBy(0.8)" aria-label="缩小地图">−</button>
+            <button class="map-reset" type="button" onclick="resetMapView()">复位</button>
           </div>
         </div>
       </section>

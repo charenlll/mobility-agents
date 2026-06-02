@@ -9,13 +9,13 @@ function renderSimpleBar(label, value, maxValue) {
   const widthPercent = maxValue > 0 ? (value / maxValue) * 100 : 0;
 
   return `
-    <div style="margin-bottom: 12px;">
-      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+    <div class="station-bar">
+      <div class="station-bar-label">
         <span>${label}</span>
         <span>${value}</span>
       </div>
-      <div style="width: 100%; height: 12px; background: #ddd; border-radius: 6px; overflow: hidden;">
-        <div style="width: ${widthPercent}%; height: 100%; background: #4a90e2;"></div>
+      <div class="station-bar-track">
+        <div class="station-bar-value" style="width: ${widthPercent}%;"></div>
       </div>
     </div>
   `;
@@ -35,7 +35,7 @@ function renderChartSection(stationData) {
   const maxValue = Math.max(cateringNum, scenicSpotNum, companyNum, shoppingMallNum, educationNum, livingServiceNum, sportLeisureNum, medicalNum, 1);
 
   return `
-    <div>
+    <div class="station-chart">
       <h3>图表展示</h3>
       ${renderSimpleBar("餐饮设施数量", cateringNum, maxValue)}
       ${renderSimpleBar("风景名胜数量", scenicSpotNum, maxValue)}

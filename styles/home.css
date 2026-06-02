@@ -1,7 +1,18 @@
 /* ===== 首页 Hero 区 ===== */
 .hero-card {
-  padding: 28px 20px;
+  padding: 34px 24px;
   margin-top: 6px;
+  text-align: center;
+}
+
+.hero-card::before {
+  content: "URBAN MOBILITY · AI AGENTS";
+  display: block;
+  margin-bottom: 10px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
 }
 
 .hero-title {
@@ -31,13 +42,13 @@
   border: none;
   border-radius: 16px;
   padding: 16px 18px;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  background: var(--primary);
   color: white;
   font-size: 17px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.2);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 10px 24px rgba(127, 63, 70, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .menu-btn:active {
@@ -45,14 +56,14 @@
 }
 
 .menu-btn.secondary {
-  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  background: var(--accent);
 }
 
 .menu-btn.ghost {
   background: rgba(255, 255, 255, 0.75);
   color: var(--primary-dark);
-  border: 1px solid rgba(96, 165, 250, 0.35);
-  box-shadow: 0 8px 20px rgba(43, 108, 176, 0.1);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 20px rgba(83, 43, 50, 0.08);
 }
 
 /* ===== 首页天气推荐 ===== */
@@ -66,7 +77,7 @@
   color: var(--primary-dark);
   margin-bottom: 14px;
   padding-left: 12px;
-  border-left: 4px solid var(--primary);
+  border-left: 4px solid var(--accent);
 }
 
 .info-grid {
@@ -120,7 +131,7 @@
 }
 
 .recommend-list li::before {
-  content: "•";
+  content: "·";
   position: absolute;
   left: 0;
   top: 0;
@@ -156,7 +167,7 @@
 
   .menu-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.24);
+    box-shadow: 0 14px 28px rgba(127, 63, 70, 0.2);
   }
 
   .info-grid {

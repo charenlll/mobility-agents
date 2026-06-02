@@ -1,22 +1,21 @@
 // ===== 地图缩放和拖拽控制 =====
 let mapState = {
   scale: 1,
+  fitScale: 1,
   offsetX: 0,
   offsetY: 0,
   isInitialized: false
 };
 
-const MIN_SCALE = 0.5;
+const ABSOLUTE_MIN_SCALE = 0.04;
 const MAX_SCALE = 5;
-const ICON_VISIBILITY_SCALE = 0.8;
+const ICON_VISIBILITY_RATIO = 0.96;
 
 const pointerState = {
   pointers: new Map(),
-  isMouseDragging: false,
-  mouseStartX: 0,
-  mouseStartY: 0,
-  mouseStartOffsetX: 0,
-  mouseStartOffsetY: 0,
+  dragStartPoint: null,
+  dragStartOffsetX: 0,
+  dragStartOffsetY: 0,
   pinchStartDistance: 0,
   pinchStartScale: 1,
   pinchWorldX: 0,
@@ -24,75 +23,103 @@ const pointerState = {
   isPinching: false
 };
 
+let transformFrame = null;
+let resizeTimer = null;
+
+function getViewport() {
+  return document.getElementById("map-viewport");
+}
+
+function getMapImage() {
+  return document.getElementById("map-image");
+}
+
 function updateStationIconVisibility() {
   const stationLayer = document.getElementById("station-layer");
   if (!stationLayer) return;
 
-  if (mapState.scale < ICON_VISIBILITY_SCALE) {
-    stationLayer.classList.add("zoom-hidden");
+  stationLayer.classList.toggle("zoom-hidden", mapState.scale < mapState.fitScale * ICON_VISIBILITY_RATIO);
+}
+
+function constrainOffsets() {
+  const viewport = getViewport();
+  const mapImage = getMapImage();
+  if (!viewport || !mapImage?.naturalWidth || !mapImage?.naturalHeight) return;
+
+  const scaledWidth = mapImage.naturalWidth * mapState.scale;
+  const scaledHeight = mapImage.naturalHeight * mapState.scale;
+
+  if (scaledWidth <= viewport.clientWidth) {
+    mapState.offsetX = (viewport.clientWidth - scaledWidth) / 2;
   } else {
-    stationLayer.classList.remove("zoom-hidden");
+    mapState.offsetX = Math.min(0, Math.max(viewport.clientWidth - scaledWidth, mapState.offsetX));
+  }
+
+  if (scaledHeight <= viewport.clientHeight) {
+    mapState.offsetY = (viewport.clientHeight - scaledHeight) / 2;
+  } else {
+    mapState.offsetY = Math.min(0, Math.max(viewport.clientHeight - scaledHeight, mapState.offsetY));
   }
 }
 
 function updateMapTransform() {
-  const container = document.getElementById("map-container");
-  if (!container) return;
+  if (transformFrame) return;
 
-  container.style.transform = `translate(${mapState.offsetX}px, ${mapState.offsetY}px) scale(${mapState.scale})`;
-  updateStationIconVisibility();
+  transformFrame = requestAnimationFrame(() => {
+    transformFrame = null;
+    const container = document.getElementById("map-container");
+    if (!container) return;
+
+    constrainOffsets();
+    container.style.transform = `translate3d(${mapState.offsetX}px, ${mapState.offsetY}px, 0) scale(${mapState.scale})`;
+    updateStationIconVisibility();
+  });
 }
 
 function fitMapToViewport() {
-  const viewport = document.getElementById("map-viewport");
-  const mapImage = document.getElementById("map-image");
+  const viewport = getViewport();
+  const mapImage = getMapImage();
+  if (!viewport || !mapImage?.naturalWidth || !mapImage?.naturalHeight) return;
 
-  if (!viewport || !mapImage) return;
-  if (!mapImage.naturalWidth || !mapImage.naturalHeight) return;
-
-  const viewportWidth = viewport.clientWidth;
-  const viewportHeight = viewport.clientHeight;
-  const imageWidth = mapImage.naturalWidth;
-  const imageHeight = mapImage.naturalHeight;
-
-  if (!viewportWidth || !viewportHeight || !imageWidth || !imageHeight) return;
-
-  const scaleX = viewportWidth / imageWidth;
-  const scaleY = viewportHeight / imageHeight;
-  const fitScale = Math.max(scaleX, scaleY);
-
-  mapState.scale = fitScale;
-
-  const scaledWidth = imageWidth * fitScale;
-  const scaledHeight = imageHeight * fitScale;
-
-  mapState.offsetX = (viewportWidth - scaledWidth) / 2;
-  mapState.offsetY = (viewportHeight - scaledHeight) / 2;
+  const scaleX = viewport.clientWidth / mapImage.naturalWidth;
+  const scaleY = viewport.clientHeight / mapImage.naturalHeight;
+  mapState.fitScale = Math.max(scaleX, scaleY);
+  mapState.scale = mapState.fitScale;
+  mapState.offsetX = (viewport.clientWidth - mapImage.naturalWidth * mapState.scale) / 2;
+  mapState.offsetY = (viewport.clientHeight - mapImage.naturalHeight * mapState.scale) / 2;
 
   updateMapTransform();
 }
 
 function clampScale(scale) {
-  return Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
+  const minScale = Math.max(ABSOLUTE_MIN_SCALE, mapState.fitScale * 0.9);
+  return Math.max(minScale, Math.min(MAX_SCALE, scale));
 }
 
 function zoomAtPoint(pointX, pointY, newScale) {
   const clampedScale = clampScale(newScale);
-
   const worldX = (pointX - mapState.offsetX) / mapState.scale;
   const worldY = (pointY - mapState.offsetY) / mapState.scale;
 
   mapState.offsetX = pointX - worldX * clampedScale;
   mapState.offsetY = pointY - worldY * clampedScale;
   mapState.scale = clampedScale;
-
   updateMapTransform();
 }
 
+function zoomMapBy(factor) {
+  const viewport = getViewport();
+  if (!viewport) return;
+
+  zoomAtPoint(viewport.clientWidth / 2, viewport.clientHeight / 2, mapState.scale * factor);
+}
+
+function resetMapView() {
+  fitMapToViewport();
+}
+
 function getDistance(pointA, pointB) {
-  const dx = pointB.x - pointA.x;
-  const dy = pointB.y - pointA.y;
-  return Math.sqrt(dx * dx + dy * dy);
+  return Math.hypot(pointB.x - pointA.x, pointB.y - pointA.y);
 }
 
 function getCenter(pointA, pointB) {
@@ -104,29 +131,27 @@ function getCenter(pointA, pointB) {
 
 function getViewportPoint(viewport, clientX, clientY) {
   const rect = viewport.getBoundingClientRect();
-  return {
-    x: clientX - rect.left,
-    y: clientY - rect.top
-  };
+  return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+function startDrag(point) {
+  pointerState.dragStartPoint = point;
+  pointerState.dragStartOffsetX = mapState.offsetX;
+  pointerState.dragStartOffsetY = mapState.offsetY;
 }
 
 function resetPinchState() {
   pointerState.pinchStartDistance = 0;
   pointerState.pinchStartScale = mapState.scale;
-  pointerState.pinchWorldX = 0;
-  pointerState.pinchWorldY = 0;
   pointerState.isPinching = false;
 }
 
-function initPointerPinch(viewport) {
+function initPointerPinch() {
   const points = Array.from(pointerState.pointers.values());
   if (points.length !== 2) return;
 
-  const p1 = points[0];
-  const p2 = points[1];
-  const center = getCenter(p1, p2);
-
-  pointerState.pinchStartDistance = getDistance(p1, p2);
+  const center = getCenter(points[0], points[1]);
+  pointerState.pinchStartDistance = getDistance(points[0], points[1]);
   pointerState.pinchStartScale = mapState.scale;
   pointerState.pinchWorldX = (center.x - mapState.offsetX) / mapState.scale;
   pointerState.pinchWorldY = (center.y - mapState.offsetY) / mapState.scale;
@@ -135,150 +160,84 @@ function initPointerPinch(viewport) {
 
 function updatePointerPinch() {
   const points = Array.from(pointerState.pointers.values());
-  if (points.length !== 2 || !pointerState.isPinching || !pointerState.pinchStartDistance) {
-    return;
-  }
+  if (points.length !== 2 || !pointerState.isPinching || !pointerState.pinchStartDistance) return;
 
-  const p1 = points[0];
-  const p2 = points[1];
-
-  const currentDistance = getDistance(p1, p2);
-  const center = getCenter(p1, p2);
-
-  const scaleRatio = currentDistance / pointerState.pinchStartDistance;
-  const newScale = clampScale(pointerState.pinchStartScale * scaleRatio);
-
-  mapState.scale = newScale;
-  mapState.offsetX = center.x - pointerState.pinchWorldX * newScale;
-  mapState.offsetY = center.y - pointerState.pinchWorldY * newScale;
-
+  const center = getCenter(points[0], points[1]);
+  const scaleRatio = getDistance(points[0], points[1]) / pointerState.pinchStartDistance;
+  mapState.scale = clampScale(pointerState.pinchStartScale * scaleRatio);
+  mapState.offsetX = center.x - pointerState.pinchWorldX * mapState.scale;
+  mapState.offsetY = center.y - pointerState.pinchWorldY * mapState.scale;
   updateMapTransform();
 }
 
 function initMapInteraction() {
-  const viewport = document.getElementById("map-viewport");
-
-  if (!viewport) {
-    console.error("地图容器不存在");
-    return;
-  }
+  const viewport = getViewport();
+  if (!viewport || mapState.isInitialized) return;
 
   mapState.isInitialized = true;
   fitMapToViewport();
-  console.log("[地图] 交互初始化完成");
 
-  // ===== 桌面端滚轮缩放 =====
-  viewport.addEventListener("wheel", (e) => {
-    e.preventDefault();
+  document.querySelectorAll(".map-controls button").forEach((button) => {
+    button.addEventListener("pointerdown", (event) => event.stopPropagation());
+  });
 
-    const point = getViewportPoint(viewport, e.clientX, e.clientY);
-    const scrollDelta = e.deltaY > 0 ? -0.1 : 0.1;
-    const newScale = mapState.scale + scrollDelta;
-
-    zoomAtPoint(point.x, point.y, newScale);
+  viewport.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    const point = getViewportPoint(viewport, event.clientX, event.clientY);
+    zoomAtPoint(point.x, point.y, mapState.scale * Math.exp(-event.deltaY * 0.0015));
   }, { passive: false });
 
-  // ===== 鼠标拖拽 =====
-  viewport.addEventListener("mousedown", (e) => {
-    if (e.button !== 0) return;
+  viewport.addEventListener("dblclick", (event) => {
+    const point = getViewportPoint(viewport, event.clientX, event.clientY);
+    zoomAtPoint(point.x, point.y, mapState.scale * 1.45);
+  });
 
-    pointerState.isMouseDragging = true;
-    pointerState.mouseStartX = e.clientX;
-    pointerState.mouseStartY = e.clientY;
-    pointerState.mouseStartOffsetX = mapState.offsetX;
-    pointerState.mouseStartOffsetY = mapState.offsetY;
+  viewport.addEventListener("pointerdown", (event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+
+    viewport.setPointerCapture(event.pointerId);
+    const point = getViewportPoint(viewport, event.clientX, event.clientY);
+    pointerState.pointers.set(event.pointerId, point);
     viewport.classList.add("dragging");
 
-    e.preventDefault();
+    if (pointerState.pointers.size === 1) startDrag(point);
+    if (pointerState.pointers.size === 2) initPointerPinch();
+    event.preventDefault();
   });
 
-  document.addEventListener("mousemove", (e) => {
-    if (!pointerState.isMouseDragging) return;
+  viewport.addEventListener("pointermove", (event) => {
+    if (!pointerState.pointers.has(event.pointerId)) return;
 
-    const deltaX = e.clientX - pointerState.mouseStartX;
-    const deltaY = e.clientY - pointerState.mouseStartY;
+    const point = getViewportPoint(viewport, event.clientX, event.clientY);
+    pointerState.pointers.set(event.pointerId, point);
 
-    mapState.offsetX = pointerState.mouseStartOffsetX + deltaX;
-    mapState.offsetY = pointerState.mouseStartOffsetY + deltaY;
-
-    updateMapTransform();
-  });
-
-  document.addEventListener("mouseup", () => {
-    pointerState.isMouseDragging = false;
-    viewport.classList.remove("dragging");
-  });
-
-  // ===== Pointer Events：手机/平板触摸支持 =====
-  viewport.addEventListener("pointerdown", (e) => {
-    if (e.pointerType === "mouse") return;
-
-    viewport.setPointerCapture(e.pointerId);
-
-    const point = getViewportPoint(viewport, e.clientX, e.clientY);
-    pointerState.pointers.set(e.pointerId, point);
-
-    if (pointerState.pointers.size === 1) {
-      pointerState.mouseStartX = e.clientX;
-      pointerState.mouseStartY = e.clientY;
-      pointerState.mouseStartOffsetX = mapState.offsetX;
-      pointerState.mouseStartOffsetY = mapState.offsetY;
-    } else if (pointerState.pointers.size === 2) {
-      initPointerPinch(viewport);
-    }
-
-    e.preventDefault();
-  });
-
-  viewport.addEventListener("pointermove", (e) => {
-    if (e.pointerType === "mouse") return;
-    if (!pointerState.pointers.has(e.pointerId)) return;
-
-    const point = getViewportPoint(viewport, e.clientX, e.clientY);
-    pointerState.pointers.set(e.pointerId, point);
-
-    if (pointerState.pointers.size === 1 && !pointerState.isPinching) {
-      const deltaX = e.clientX - pointerState.mouseStartX;
-      const deltaY = e.clientY - pointerState.mouseStartY;
-
-      mapState.offsetX = pointerState.mouseStartOffsetX + deltaX;
-      mapState.offsetY = pointerState.mouseStartOffsetY + deltaY;
-
-      updateMapTransform();
-    } else if (pointerState.pointers.size === 2) {
+    if (pointerState.pointers.size === 2) {
       updatePointerPinch();
+    } else if (pointerState.pointers.size === 1 && !pointerState.isPinching && pointerState.dragStartPoint) {
+      mapState.offsetX = pointerState.dragStartOffsetX + point.x - pointerState.dragStartPoint.x;
+      mapState.offsetY = pointerState.dragStartOffsetY + point.y - pointerState.dragStartPoint.y;
+      updateMapTransform();
     }
-
-    e.preventDefault();
+    event.preventDefault();
   });
 
-  function handlePointerEnd(e) {
-    if (e.pointerType !== "mouse") {
-      pointerState.pointers.delete(e.pointerId);
+  function handlePointerEnd(event) {
+    pointerState.pointers.delete(event.pointerId);
+    if (viewport.hasPointerCapture?.(event.pointerId)) viewport.releasePointerCapture(event.pointerId);
 
-      if (pointerState.pointers.size < 2) {
-        resetPinchState();
-      }
-
-      if (pointerState.pointers.size === 1) {
-        const remainingPoint = Array.from(pointerState.pointers.values())[0];
-        pointerState.mouseStartX = remainingPoint.x;
-        pointerState.mouseStartY = remainingPoint.y;
-        pointerState.mouseStartOffsetX = mapState.offsetX;
-        pointerState.mouseStartOffsetY = mapState.offsetY;
-      }
-    }
-
-    if (viewport.hasPointerCapture && viewport.hasPointerCapture(e.pointerId)) {
-      viewport.releasePointerCapture(e.pointerId);
+    if (pointerState.pointers.size < 2) resetPinchState();
+    if (pointerState.pointers.size === 1) startDrag(Array.from(pointerState.pointers.values())[0]);
+    if (pointerState.pointers.size === 0) {
+      pointerState.dragStartPoint = null;
+      viewport.classList.remove("dragging");
     }
   }
 
   viewport.addEventListener("pointerup", handlePointerEnd);
   viewport.addEventListener("pointercancel", handlePointerEnd);
 
-  // ===== 窗口变化时重新适配 =====
   window.addEventListener("resize", () => {
-    fitMapToViewport();
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(fitMapToViewport, 160);
   });
 }

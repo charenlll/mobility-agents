@@ -16,8 +16,8 @@
 }
 
 .highlight-card {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(96, 165, 250, 0.08));
-  border: 1px solid rgba(59, 130, 246, 0.18);
+  background: linear-gradient(135deg, rgba(197, 155, 82, 0.16), rgba(127, 63, 70, 0.06));
+  border: 1px solid var(--border);
 }
 
 @media (min-width: 768px) {
