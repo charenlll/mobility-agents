@@ -7,9 +7,23 @@ async function initMap(stationType) {
   }
 
   const loadStationsAndRender = async () => {
+    if (typeof mapImage.decode === "function") {
+      try {
+        await mapImage.decode();
+      } catch (error) {
+        console.warn("[地图] 图片解码未完成，继续初始化", error);
+      }
+    }
+
     if (typeof initMapInteraction === "function") {
       initMapInteraction();
     }
+
+    requestAnimationFrame(() => {
+      if (typeof fitMapToViewport === "function") {
+        fitMapToViewport();
+      }
+    });
 
     try {
       console.log(`[地图] 开始加载 ${stationType} 站点数据`);

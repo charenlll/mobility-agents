@@ -128,6 +128,12 @@ body.map-page {
   overflow: visible;
 }
 
+#map-container picture {
+  display: block;
+  width: 5000px;
+  height: 3351px;
+}
+
 .map-controls {
   position: absolute;
   right: 14px;
@@ -162,9 +168,10 @@ body.map-page {
 
 #map-image {
   display: block;
-  width: auto;
+  width: 5000px;
   max-width: none;
-  height: auto;
+  height: 3351px;
+  object-fit: fill;
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: none;
@@ -184,6 +191,57 @@ body.map-page {
   position: absolute;
   z-index: 11;
   pointer-events: auto;
+}
+
+.station-tooltip {
+  position: absolute;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 132px;
+  max-width: 240px;
+  padding: 10px 12px;
+  border: 1px solid rgba(83, 43, 50, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 253, 249, 0.96);
+  box-shadow: 0 12px 28px rgba(83, 43, 50, 0.18);
+  color: var(--primary-dark);
+  line-height: 1.35;
+  pointer-events: none;
+  backdrop-filter: blur(14px);
+}
+
+.station-tooltip[hidden] {
+  display: none;
+}
+
+.station-tooltip-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(197, 155, 82, 0.16);
+}
+
+.station-tooltip-name,
+.station-tooltip-type {
+  display: block;
+}
+
+.station-tooltip-name {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.station-tooltip-type {
+  margin-top: 2px;
+  color: var(--text-sub);
+  font-size: 10px;
+  letter-spacing: 0.08em;
 }
 
 /* ===== 站点点位基础样式 ===== */

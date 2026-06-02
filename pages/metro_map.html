@@ -40,11 +40,17 @@
       <section class="map-stage-section">
         <div id="map-viewport">
           <div id="map-container">
-            <img
-              id="map-image"
-              src="../assets/images/metro_map.jpg"
-              alt="地铁地图"
-            />
+            <picture>
+              <source media="(max-width: 767px)" srcset="../assets/images/metro_map_mobile.jpg" />
+              <img
+                id="map-image"
+                src="../assets/images/metro_map.jpg"
+                alt="地铁地图"
+                width="5000"
+                height="3351"
+                decoding="async"
+              />
+            </picture>
             <div id="station-layer"></div>
           </div>
           <div class="map-controls" aria-label="地图缩放控件">

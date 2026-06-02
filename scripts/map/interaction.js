@@ -34,6 +34,15 @@ function getMapImage() {
   return document.getElementById("map-image");
 }
 
+function getMapDimensions(mapImage = getMapImage()) {
+  if (!mapImage) return { width: 0, height: 0 };
+
+  return {
+    width: Number(mapImage.getAttribute("width")) || mapImage.naturalWidth,
+    height: Number(mapImage.getAttribute("height")) || mapImage.naturalHeight
+  };
+}
+
 function updateStationIconVisibility() {
   const stationLayer = document.getElementById("station-layer");
   if (!stationLayer) return;
@@ -44,10 +53,11 @@ function updateStationIconVisibility() {
 function constrainOffsets() {
   const viewport = getViewport();
   const mapImage = getMapImage();
-  if (!viewport || !mapImage?.naturalWidth || !mapImage?.naturalHeight) return;
+  const { width: imageWidth, height: imageHeight } = getMapDimensions(mapImage);
+  if (!viewport || !imageWidth || !imageHeight) return;
 
-  const scaledWidth = mapImage.naturalWidth * mapState.scale;
-  const scaledHeight = mapImage.naturalHeight * mapState.scale;
+  const scaledWidth = imageWidth * mapState.scale;
+  const scaledHeight = imageHeight * mapState.scale;
 
   if (scaledWidth <= viewport.clientWidth) {
     mapState.offsetX = (viewport.clientWidth - scaledWidth) / 2;
@@ -79,14 +89,15 @@ function updateMapTransform() {
 function fitMapToViewport() {
   const viewport = getViewport();
   const mapImage = getMapImage();
-  if (!viewport || !mapImage?.naturalWidth || !mapImage?.naturalHeight) return;
+  const { width: imageWidth, height: imageHeight } = getMapDimensions(mapImage);
+  if (!viewport || !imageWidth || !imageHeight) return;
 
-  const scaleX = viewport.clientWidth / mapImage.naturalWidth;
-  const scaleY = viewport.clientHeight / mapImage.naturalHeight;
+  const scaleX = viewport.clientWidth / imageWidth;
+  const scaleY = viewport.clientHeight / imageHeight;
   mapState.fitScale = Math.max(scaleX, scaleY);
   mapState.scale = mapState.fitScale;
-  mapState.offsetX = (viewport.clientWidth - mapImage.naturalWidth * mapState.scale) / 2;
-  mapState.offsetY = (viewport.clientHeight - mapImage.naturalHeight * mapState.scale) / 2;
+  mapState.offsetX = (viewport.clientWidth - imageWidth * mapState.scale) / 2;
+  mapState.offsetY = (viewport.clientHeight - imageHeight * mapState.scale) / 2;
 
   updateMapTransform();
 }
@@ -194,6 +205,7 @@ function initMapInteraction() {
 
   viewport.addEventListener("pointerdown", (event) => {
     if (event.button !== undefined && event.button !== 0) return;
+    if (event.target.closest?.(".station-point, .map-controls, .map-switcher")) return;
 
     viewport.setPointerCapture(event.pointerId);
     const point = getViewportPoint(viewport, event.clientX, event.clientY);
