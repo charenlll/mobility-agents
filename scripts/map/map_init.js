@@ -16,7 +16,7 @@ async function initMap(stationType) {
     }
 
     if (typeof initMapInteraction === "function") {
-      initMapInteraction();
+      initMapInteraction(stationType);
     }
 
     requestAnimationFrame(() => {

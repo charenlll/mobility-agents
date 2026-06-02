@@ -25,6 +25,7 @@ const pointerState = {
 
 let transformFrame = null;
 let resizeTimer = null;
+let activeGeoReference = null;
 
 function getViewport() {
   return document.getElementById("map-viewport");
@@ -35,11 +36,11 @@ function getMapImage() {
 }
 
 function getMapDimensions(mapImage = getMapImage()) {
-  if (!mapImage) return { width: 0, height: 0 };
+  if (!mapImage && !activeGeoReference) return { width: 0, height: 0 };
 
   return {
-    width: Number(mapImage.getAttribute("width")) || mapImage.naturalWidth,
-    height: Number(mapImage.getAttribute("height")) || mapImage.naturalHeight
+    width: activeGeoReference?.canvas_width || Number(mapImage?.getAttribute("width")) || mapImage?.naturalWidth,
+    height: activeGeoReference?.canvas_height || Number(mapImage?.getAttribute("height")) || mapImage?.naturalHeight
   };
 }
 
@@ -181,10 +182,11 @@ function updatePointerPinch() {
   updateMapTransform();
 }
 
-function initMapInteraction() {
+function initMapInteraction(stationType) {
   const viewport = getViewport();
   if (!viewport || mapState.isInitialized) return;
 
+  activeGeoReference = GEO_REFERENCE[stationType] || null;
   mapState.isInitialized = true;
   fitMapToViewport();
 

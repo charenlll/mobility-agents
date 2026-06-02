@@ -29,6 +29,8 @@ console.log("[API] 当前 API 地址:", API_BASE_URL);
  */
 const GEO_REFERENCE = {
   bus: {
+    canvas_width: 5000,
+    canvas_height: 3351,
     pixel_width: 0.000236914764047,
     rotation_x: 0.0,
     rotation_y: 0.0,
@@ -37,6 +39,8 @@ const GEO_REFERENCE = {
     top_left_lat: 31.007584650442929
   },
   metro: {
+    canvas_width: 5000,
+    canvas_height: 3351,
     pixel_width: 0.000236914764047,
     rotation_x: 0.0,
     rotation_y: 0.0,

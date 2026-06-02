@@ -69,8 +69,13 @@ function renderStationLayer(stationType, stations) {
 
   const stationList = Array.isArray(stations) ? stations : [];
 
-  const imageWidth = Number(mapImage.getAttribute("width")) || mapImage.naturalWidth || mapImage.clientWidth;
-  const imageHeight = Number(mapImage.getAttribute("height")) || mapImage.naturalHeight || mapImage.clientHeight;
+  const imageWidth = geoReference.canvas_width;
+  const imageHeight = geoReference.canvas_height;
+
+  if (!imageWidth || !imageHeight) {
+    console.error(`站点类型 ${stationType} 缺少地图参考画布尺寸`);
+    return;
+  }
 
   let renderedCount = 0;
 
@@ -100,7 +105,24 @@ function renderStationLayer(stationType, stations) {
     point.style.left = `${pixel.x}px`;
     point.style.top = `${pixel.y}px`;
     const stationName = station.station_name || station.name || "未命名站点";
+    const stationId = station.station_id || station.id;
+    let lastPointerOpenAt = 0;
     point.setAttribute("aria-label", stationName);
+
+    async function openStationDetails() {
+      hideStationTooltip();
+
+      try {
+        if (typeof loadStationCard !== "function") {
+          console.error("loadStationCard 未定义");
+          return;
+        }
+
+        await loadStationCard(stationId, stationType);
+      } catch (error) {
+        console.error("加载站点详情失败:", error);
+      }
+    }
 
     point.addEventListener("pointerenter", (event) => {
       showStationTooltip(event, stationName);
@@ -112,23 +134,25 @@ function renderStationLayer(stationType, stations) {
 
     point.addEventListener("pointerleave", hideStationTooltip);
 
+    point.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
+
+    point.addEventListener("pointerup", (event) => {
+      event.stopPropagation();
+
+      if (event.pointerType === "mouse" && event.button === 0) {
+        lastPointerOpenAt = Date.now();
+        openStationDetails();
+      }
+    });
+
     point.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
-      hideStationTooltip();
 
-      try {
-        const stationId = station.station_id || station.id;
-
-        if (typeof loadStationCard !== "function") {
-          console.error("loadStationCard 未定义");
-          return;
-        }
-
-        await loadStationCard(stationId, stationType);
-      } catch (error) {
-        console.error("加载站点详情失败:", error);
-      }
+      if (Date.now() - lastPointerOpenAt < 500) return;
+      await openStationDetails();
     });
 
     stationLayer.appendChild(point);
