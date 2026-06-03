@@ -233,6 +233,63 @@ body.map-page {
   cursor: grabbing;
 }
 
+.map-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 253, 249, 0.78);
+  backdrop-filter: blur(12px);
+  transition: opacity 0.18s ease;
+}
+
+.map-loading-overlay[hidden] {
+  display: none;
+}
+
+.map-loading-overlay.is-hiding {
+  opacity: 0;
+}
+
+.map-loading-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  min-width: 220px;
+  padding: 22px 24px;
+  border: 1px solid rgba(83, 43, 50, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 253, 249, 0.94);
+  box-shadow: 0 18px 46px rgba(83, 43, 50, 0.16);
+  color: var(--primary-dark);
+}
+
+.map-loading-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(127, 63, 70, 0.16);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: map-loading-spin 0.86s linear infinite;
+}
+
+.map-loading-title {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.map-loading-text {
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+@keyframes map-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 #map-container {
   position: absolute;
   left: 0;

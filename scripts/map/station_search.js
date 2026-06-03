@@ -4,9 +4,9 @@ const stationSearchState = {
   stationType: null,
   stations: [],
   pinyin: null,
-  match: null,
   activeElement: null,
-  initialized: false
+  initialized: false,
+  pinyinIndexing: false
 };
 
 function normalizeStationSearchText(value) {
@@ -20,34 +20,59 @@ function getStationSearchName(station) {
   return station.stationName || station.station_name || station.name || "";
 }
 
-function buildStationSearchKeywords(item) {
+function getBasicStationSearchKeywords(item) {
   const name = getStationSearchName(item);
-  const keywords = new Set([
+  return [
     normalizeStationSearchText(name),
     normalizeStationSearchText(name.slice(0, 1)),
     normalizeStationSearchText(item.stationId),
     normalizeStationSearchText(item.station?.station_id)
-  ]);
-
-  if (stationSearchState.pinyin && name) {
-    try {
-      const fullPinyin = stationSearchState.pinyin(name, { toneType: "none" });
-      const initials = stationSearchState.pinyin(name, { pattern: "first", toneType: "none" });
-
-      keywords.add(normalizeStationSearchText(fullPinyin));
-      keywords.add(normalizeStationSearchText(initials));
-    } catch (error) {
-      console.warn("[Station Search] pinyin conversion failed:", error);
-    }
-  }
-
-  return Array.from(keywords).filter(Boolean);
+  ].filter(Boolean);
 }
 
-function rebuildStationSearchKeywords() {
-  stationSearchState.stations.forEach((item) => {
-    item.keywords = buildStationSearchKeywords(item);
+function appendStationPinyinKeywords(item) {
+  const name = getStationSearchName(item);
+  if (!stationSearchState.pinyin || !name || item.hasPinyinKeywords) return;
+
+  try {
+    const pinyinList = stationSearchState.pinyin(name, { toneType: "none", type: "array" });
+    const fullPinyin = Array.isArray(pinyinList) ? pinyinList.join("") : pinyinList;
+    const initials = Array.isArray(pinyinList)
+      ? pinyinList.map((part) => part.slice(0, 1)).join("")
+      : "";
+
+    item.keywords.push(normalizeStationSearchText(fullPinyin));
+    item.keywords.push(normalizeStationSearchText(initials));
+    item.keywords = Array.from(new Set(item.keywords.filter(Boolean)));
+    item.hasPinyinKeywords = true;
+  } catch (error) {
+    console.warn("[Station Search] Failed to build pinyin keywords.", error);
+  }
+}
+
+function waitForSearchIndexIdle() {
+  return new Promise((resolve) => {
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(resolve, { timeout: 120 });
+      return;
+    }
+    window.setTimeout(resolve, 16);
   });
+}
+
+async function buildPinyinSearchIndexInChunks() {
+  if (!stationSearchState.pinyin || stationSearchState.pinyinIndexing) return;
+
+  stationSearchState.pinyinIndexing = true;
+  const batchSize = 120;
+
+  for (let index = 0; index < stationSearchState.stations.length; index += batchSize) {
+    const batch = stationSearchState.stations.slice(index, index + batchSize);
+    batch.forEach(appendStationPinyinKeywords);
+    await waitForSearchIndexIdle();
+  }
+
+  stationSearchState.pinyinIndexing = false;
 }
 
 async function loadStationSearchPinyin() {
@@ -56,10 +81,9 @@ async function loadStationSearchPinyin() {
   try {
     const module = await import(STATION_SEARCH_PINYIN_URL);
     stationSearchState.pinyin = module.pinyin || module.default?.pinyin || window.pinyinPro?.pinyin || null;
-    stationSearchState.match = module.match || module.default?.match || window.pinyinPro?.match || null;
-    rebuildStationSearchKeywords();
+    buildPinyinSearchIndexInChunks();
   } catch (error) {
-    console.warn("[Station Search] pinyin library unavailable:", error);
+    console.warn("[Station Search] Pinyin library unavailable.", error);
   }
 
   return stationSearchState.pinyin;
@@ -69,13 +93,19 @@ function resetStationSearchIndex(stationType) {
   stationSearchState.stationType = stationType;
   stationSearchState.stations = [];
   stationSearchState.activeElement = null;
+  stationSearchState.pinyinIndexing = false;
 }
 
 function registerStationForSearch(entry) {
   const item = {
     ...entry,
-    keywords: buildStationSearchKeywords(entry)
+    keywords: getBasicStationSearchKeywords(entry),
+    hasPinyinKeywords: false
   };
+
+  if (stationSearchState.pinyin) {
+    appendStationPinyinKeywords(item);
+  }
 
   stationSearchState.stations.push(item);
 }
@@ -111,17 +141,14 @@ function getStationSearchMatches(query) {
   return stationSearchState.stations
     .map((item) => {
       const matchedKeyword = item.keywords.find((keyword) => keyword.includes(normalizedQuery));
-      const name = getStationSearchName(item);
-      const pinyinMatched = stationSearchState.match ? stationSearchState.match(name, normalizedQuery) : null;
-      if (!matchedKeyword && !pinyinMatched) return null;
+      if (!matchedKeyword) return null;
 
-      const nameKey = normalizeStationSearchText(name);
+      const nameKey = normalizeStationSearchText(getStationSearchName(item));
       let score = 0;
       if (nameKey === normalizedQuery) score += 100;
       if (nameKey.startsWith(normalizedQuery)) score += 60;
-      if (matchedKeyword?.startsWith(normalizedQuery)) score += 40;
-      if (pinyinMatched) score += 35;
-      score -= Math.max(0, (matchedKeyword?.length || nameKey.length) - normalizedQuery.length) * 0.01;
+      if (matchedKeyword.startsWith(normalizedQuery)) score += 40;
+      score -= Math.max(0, matchedKeyword.length - normalizedQuery.length) * 0.01;
 
       return { item, score };
     })
@@ -146,8 +173,8 @@ function renderStationSearchResults(query) {
 
   if (!matches.length) {
     results.hidden = false;
-    results.innerHTML = '<div class="station-search-empty">未找到相关站点</div>';
-    setStationSearchStatus("未找到相关站点");
+    results.innerHTML = '<div class="station-search-empty">No matching station</div>';
+    setStationSearchStatus("No matching station");
     if (root) root.setAttribute("aria-expanded", "true");
     return;
   }
@@ -164,7 +191,7 @@ function renderStationSearchResults(query) {
 
     const meta = document.createElement("span");
     meta.className = "station-search-option-meta";
-    meta.textContent = item.stationType === STATION_TYPES.METRO ? "地铁站点" : "公交站点";
+    meta.textContent = item.stationType === STATION_TYPES.METRO ? "Metro station" : "Bus station";
 
     button.appendChild(name);
     button.appendChild(meta);
@@ -174,7 +201,7 @@ function renderStationSearchResults(query) {
 
   results.hidden = false;
   if (root) root.setAttribute("aria-expanded", "true");
-  setStationSearchStatus(`找到 ${matches.length} 个相关站点`);
+  setStationSearchStatus(`${matches.length} matching stations`);
 }
 
 async function focusStationSearchResult(item, options = {}) {
@@ -213,7 +240,6 @@ function initStationSearch(stationType) {
   if (!input || !results) return;
 
   stationSearchState.stationType = stationType;
-  rebuildStationSearchKeywords();
   loadStationSearchPinyin().then(() => {
     if (input.value) renderStationSearchResults(input.value);
   });
@@ -221,8 +247,12 @@ function initStationSearch(stationType) {
   if (stationSearchState.initialized) return;
   stationSearchState.initialized = true;
 
+  let searchTimer = null;
   input.addEventListener("input", () => {
-    renderStationSearchResults(input.value);
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => {
+      renderStationSearchResults(input.value);
+    }, 120);
   });
 
   input.addEventListener("focus", () => {

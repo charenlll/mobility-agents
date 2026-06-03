@@ -1,4 +1,12 @@
-function renderStationLayer(stationType, stations) {
+function waitForStationRenderFrame() {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.setTimeout(resolve, 0);
+    });
+  });
+}
+
+async function renderStationLayer(stationType, stations, options = {}) {
   const mapImage = document.getElementById("map-image");
   const stationLayer = document.getElementById("station-layer");
   const mapViewport = document.getElementById("map-viewport");
@@ -82,15 +90,18 @@ function renderStationLayer(stationType, stations) {
   }
 
   let renderedCount = 0;
+  const batchSize = options.batchSize || 180;
+  let fragment = document.createDocumentFragment();
 
-  stationList.forEach((station) => {
+  for (let index = 0; index < stationList.length; index += 1) {
+    const station = stationList[index];
     if (
       station.longitude === null ||
       station.longitude === undefined ||
       station.latitude === null ||
       station.latitude === undefined
     ) {
-      return;
+      continue;
     }
 
     const pixel = geoToPixel(
@@ -100,7 +111,7 @@ function renderStationLayer(stationType, stations) {
     );
 
     if (!pixel || Number.isNaN(pixel.x) || Number.isNaN(pixel.y)) {
-      return;
+      continue;
     }
 
     const point = document.createElement("button");
@@ -159,7 +170,7 @@ function renderStationLayer(stationType, stations) {
       await openStationDetails();
     });
 
-    stationLayer.appendChild(point);
+    fragment.appendChild(point);
 
     if (typeof registerStationForSearch === "function") {
       registerStationForSearch({
@@ -173,7 +184,20 @@ function renderStationLayer(stationType, stations) {
     }
 
     renderedCount += 1;
-  });
+
+    if (renderedCount % batchSize === 0) {
+      stationLayer.appendChild(fragment);
+      fragment = document.createDocumentFragment();
+      options.onProgress?.(renderedCount, stationList.length);
+      await waitForStationRenderFrame();
+    }
+  }
+
+  if (fragment.childNodes.length) {
+    stationLayer.appendChild(fragment);
+  }
+
+  options.onProgress?.(renderedCount, stationList.length);
 
   stationLayer.style.width = `${imageWidth}px`;
   stationLayer.style.height = `${imageHeight}px`;
