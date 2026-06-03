@@ -31,6 +31,13 @@
           <div class="map-eyebrow">BUS NETWORK</div>
           <div class="map-tip"><span class="desktop-tip">滚轮缩放，按住拖拽平移</span><span class="mobile-tip">双指缩放，单指拖动地图</span></div>
         </div>
+        <div class="station-search" role="combobox" aria-expanded="false" aria-owns="station-search-results">
+          <label class="sr-only" for="station-search-input">搜索公交站点</label>
+          <input id="station-search-input" type="search" autocomplete="off" placeholder="搜索站点 / 拼音 / 首字母" />
+          <button id="station-search-clear" class="station-search-clear" type="button" aria-label="清空搜索">×</button>
+          <div id="station-search-results" class="station-search-results" role="listbox" hidden></div>
+          <div id="station-search-status" class="sr-only" aria-live="polite"></div>
+        </div>
         <div class="map-switcher" aria-label="地图系统切换">
           <button class="active" type="button" aria-current="page">公交</button>
           <button type="button" onclick="goPage('./metro_map.html')">地铁</button>
@@ -86,6 +93,7 @@
   <script src="../scripts/card/card_controller.js"></script>
 
   <script src="../scripts/map/geo_mapper.js"></script>
+  <script src="../scripts/map/station_search.js"></script>
   <script src="../scripts/map/station_layer.js"></script>
   <script src="../scripts/map/interaction.js"></script>
   <script src="../scripts/map/map_init.js"></script>

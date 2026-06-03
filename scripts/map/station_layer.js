@@ -10,6 +10,10 @@ function renderStationLayer(stationType, stations) {
 
   stationLayer.innerHTML = "";
 
+  if (typeof resetStationSearchIndex === "function") {
+    resetStationSearchIndex(stationType);
+  }
+
   let stationTooltip = document.getElementById("station-tooltip");
   if (!stationTooltip) {
     stationTooltip = document.createElement("div");
@@ -156,6 +160,18 @@ function renderStationLayer(stationType, stations) {
     });
 
     stationLayer.appendChild(point);
+
+    if (typeof registerStationForSearch === "function") {
+      registerStationForSearch({
+        station,
+        stationId,
+        stationName,
+        stationType,
+        pixel,
+        element: point
+      });
+    }
+
     renderedCount += 1;
   });
 
@@ -163,4 +179,8 @@ function renderStationLayer(stationType, stations) {
   stationLayer.style.height = `${imageHeight}px`;
 
   console.log(`[地图] ${stationType} 已渲染站点数:`, renderedCount);
+
+  if (typeof initStationSearch === "function") {
+    initStationSearch(stationType);
+  }
 }

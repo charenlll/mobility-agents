@@ -130,6 +130,18 @@ function resetMapView() {
   fitMapToViewport();
 }
 
+function focusMapOnPixel(pixelX, pixelY, options = {}) {
+  const viewport = getViewport();
+  if (!viewport || !Number.isFinite(pixelX) || !Number.isFinite(pixelY)) return;
+
+  const desiredScale = options.scale || Math.max(mapState.fitScale * 2.6, 0.42);
+  mapState.scale = clampScale(desiredScale);
+  mapState.offsetX = viewport.clientWidth / 2 - pixelX * mapState.scale;
+  mapState.offsetY = viewport.clientHeight / 2 - pixelY * mapState.scale;
+
+  updateMapTransform();
+}
+
 function getDistance(pointA, pointB) {
   return Math.hypot(pointB.x - pointA.x, pointB.y - pointA.y);
 }
